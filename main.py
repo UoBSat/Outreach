@@ -1,13 +1,15 @@
-import cv2
-from PIL import Image
-import pygame, pygame.image
-import time
-from gpiozero import Button
-from stepper import Stepper
-import threading
-import copy
-from datetime import datetime
 import argparse
+import copy
+import socket
+import threading
+import time
+import constants
+from datetime import datetime
+
+import cv2
+import pygame
+import pygame.image
+from gpiozero import Button
 
 DISPLAY_WIDTH = 1000
 DISPLAY_HEIGHT = 1000
@@ -25,7 +27,8 @@ INDEX_X_NEG = 1
 INDEX_Y_POS = 2
 INDEX_Y_NEG = 3
 
-LIMIT_SWITCH_PINS = [5,6,13,19]
+LIMIT_SWITCH_PINS = [5, 6, 13, 19]
+
 
 class LimitSwitch:
     def __init__(self, switch_num):
@@ -40,6 +43,7 @@ class LimitSwitch:
     def un_triggered(self):
         self.limit_triggered = False
 
+
 global limit_switches
 limit_switches = [LimitSwitch(i) for i in LIMIT_SWITCH_PINS]
 
@@ -51,7 +55,6 @@ image_buffer_lock = threading.Lock()
 quit_lock = threading.Lock()
 image_available = False
 quit_flag = False
-
 
 
 class ImageReader(threading.Thread):
@@ -74,7 +77,8 @@ class ImageReader(threading.Thread):
             ret, cv_image = self.cam.read()
             if cv_image is not None:
                 img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
-                buff = cv2.rotate(cv2.convertScaleAbs(cv2.resize(img, IMAGE_SIZE), 4, -2), cv2.ROTATE_90_COUNTERCLOCKWISE)
+                buff = cv2.rotate(cv2.convertScaleAbs(cv2.resize(img, IMAGE_SIZE), 4, -2),
+                                  cv2.ROTATE_90_COUNTERCLOCKWISE)
                 image_buffer_lock.acquire()
                 image_buffer = copy.copy(buff)
                 image_buffer_lock.release()
@@ -83,12 +87,12 @@ class ImageReader(threading.Thread):
 
 def main_loop(display, joystick):
     global quit_lock, quit_flag, image_buffer_lock, image_buffer
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    command_bytes = bytearray(1)
     keep_running = True
     joystick_conn = False
     clock = pygame.time.Clock()
     count = 0
-    stepper_1 = Stepper(4,3,2,18)
-    stepper_2 = Stepper(20,16,12,7)
     image_saved = True
     last_time = time.time()
     total_time_passed = 0
@@ -121,7 +125,7 @@ def main_loop(display, joystick):
                 # Convert opencv image to pygame compatible image
                 display.blit(pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR'), IMAGE_DISPLAY_LOCATION)
             image_buffer_lock.release()
-        
+
         total_time_passed += time.time() - last_time
         last_time = time.time()
         if total_time_passed >= 1:
@@ -130,34 +134,38 @@ def main_loop(display, joystick):
             if countdown_counter <= 0:
                 countdown_counter = 0
 
-        counter_text = text_font.render(str(countdown_counter), True, (FONT_COLOR_GREEN if countdown_counter > 10 else FONT_COLOR_RED))
+        counter_text = text_font.render(str(countdown_counter), True,
+                                        (FONT_COLOR_GREEN if countdown_counter > 10 else FONT_COLOR_RED))
         # Draw rectangle over old text to prevent overlap
-        pygame.draw.rect(display, (0, 0, 0), 
-                (COUNTDOWN_DISPLAY_LOCATION[0], COUNTDOWN_DISPLAY_LOCATION[1], 100, 60)
-                )
+        pygame.draw.rect(display, (0, 0, 0),
+                         (COUNTDOWN_DISPLAY_LOCATION[0], COUNTDOWN_DISPLAY_LOCATION[1], 100, 60)
+                         )
         display.blit(counter_text, COUNTDOWN_DISPLAY_LOCATION)
         # Update display
         pygame.display.flip()
 
         # Only step steppers beyond a threshold
         if x > 0.5 and not limit_switches[INDEX_X_POS].limit_triggered:
-            #print("Stepper in positive x")
-            stepper_1.step_clockwise()
+            # print("Stepper in positive x")
+            command_bytes[0] |= constants.X_POSITIVE
         elif x < -0.5 and not limit_switches[INDEX_X_NEG].limit_triggered:
-            #print("Stepper in negative x")
-            stepper_1.step_counterclockwise()
-        
+            # print("Stepper in negative x")
+            command_bytes[0] |= constants.X_NEGATIVE
+
         if y > 0.5 and not limit_switches[INDEX_Y_POS].limit_triggered:
-            #print("Stepper in positive y")
-            stepper_2.step_clockwise()
+            # print("Stepper in positive y")
+            command_bytes[0] |= constants.Y_POSITIVE
         elif y < -0.5 and not limit_switches[INDEX_Y_NEG].limit_triggered:
-            #print("Stepper in negative y")
-            stepper_2.step_counterclockwise()
-        
+            # print("Stepper in negative y")
+            command_bytes[0] |= constants.Y_NEGATIVE
+
+        sock.sendto(command_bytes, constants.COMMAND_SERVER)
+        command_bytes[0] = 0
+
         if button:
             image_buffer_lock.acquire()
             if image_buffer is not None and not image_saved:
-                count+=1
+                count += 1
                 new_img_name = str(datetime.now().strftime("%H-%M-%S.jpg"))
                 cv2.imwrite("./images/image_" + new_img_name, image_buffer)
                 image_saved = True
@@ -170,7 +178,9 @@ def main_loop(display, joystick):
     print("Exiting control loop")
     quit_lock.acquire()
     quit_flag = True
+    sock.close()
     quit_lock.release()
+
 
 if __name__ == '__main__':
     argument_parser = argparse.ArgumentParser()
@@ -178,7 +188,6 @@ if __name__ == '__main__':
     args = argument_parser.parse_args()
     COUNTDOWN_TIME = args.countdown_max
     print("Counting down from: " + str(COUNTDOWN_TIME))
-
 
     cam = cv2.VideoCapture(0)
     pygame.init()
