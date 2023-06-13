@@ -74,6 +74,7 @@ int main() {
   timer = clock();
   cout << "Loop starting...\n";
   keepRunning = true;
+  int receivedBytesCount;
 
   while (keepRunning) {
     #ifndef TEST_MODE

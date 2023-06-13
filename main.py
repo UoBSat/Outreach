@@ -169,11 +169,11 @@ def main_loop(display, joystick):
                 new_img_name = str(datetime.now().strftime("%H-%M-%S.jpg"))
                 cv2.imwrite("./images/image_" + new_img_name, image_buffer)
                 image_saved = True
-                joystick.rumble(0.9, 0.9, 0)
+                # joystick.rumble(0.9, 0.9, 0)
             image_buffer_lock.release()
         else:
             image_saved = False
-            joystick.stop_rumble()
+            # joystick.stop_rumble()
 
     print("Exiting control loop")
     quit_lock.acquire()
