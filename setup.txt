@@ -1,6 +1,6 @@
 Install a little software that emulates thermapp as a vl42 device:
 
-$ sudo apt install libusb-dev
+$ sudo apt install libusb-dev libusb-1.0-0-dev
 $ sudo apt install v4l2loopback-dkms
 $ git clone https://github.com/encryptededdy/ThermAppCam.git
 $ cd ThermAppCam/thermapp
