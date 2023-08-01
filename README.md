@@ -42,6 +42,6 @@ Now leave this process and open a new terminal and run:
 
 ```
 $ cd /Outreach
-$ python3 main.py
+$ python3 main.py XXX
 ```
-This should then open a pygame window showing the camera feed and you can use the joystick to move the camera.
+This should then open a pygame window showing the camera feed and you can use the joystick to move the camera. In this command, XXX is replaced with an integer of how long to countdown for.
