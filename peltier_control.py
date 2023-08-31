@@ -5,7 +5,7 @@ import random
 def main():
 
     GPIO.setmode(GPIO.BCM)
-    peltiers = [4, 3, 2, 18]
+    peltiers = [26,19,13,6]
     for peltier in peltiers:
         GPIO.setup(peltier, GPIO.OUT)
         GPIO.output(peltier, 0)
