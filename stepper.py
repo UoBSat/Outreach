@@ -46,4 +46,4 @@ class Stepper:
         for step_params in step_sequence[::-1]:
             self.write(step_params)
             time.sleep(step_delay)
-
+    
