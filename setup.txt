@@ -18,3 +18,8 @@ Now, whenever you want to read from the thermapp, first connect, keep cap on, th
 $ sudo thermapp
 
 Then it can be used as an ordinary webcam with OpenCV. There will be a script to automate this and launch...somewhere....
+
+
+Pygame2 will require additional installation of libSDL2 for displaying png images:
+$ sudo apt install libsdl2-image-2.0-0
+
