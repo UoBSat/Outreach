@@ -19,7 +19,7 @@ import json
 
 
 cubesat_size = (155, 155)
-cubesat_logo = pygame.image.load("logo.png")
+cubesat_logo = pygame.image.load("figs/logo.png")
 cubesat_logo = pygame.transform.scale(cubesat_logo, cubesat_size)
 cubesat_location = (-10, 844)
 
@@ -28,7 +28,7 @@ DISPLAY_HEIGHT = 1000
 IMAGE_SIZE = (1000,1000)
 IMAGE_DISPLAY_LOCATION = (-(IMAGE_SIZE[1]-DISPLAY_WIDTH)/2, -(IMAGE_SIZE[0]-DISPLAY_HEIGHT)/2)
 
-static_screen = pygame.image.load("static.gif")
+static_screen = pygame.image.load("figs/static.gif")
 static_screen = pygame.transform.scale(static_screen, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
 static_screen_location = (0, 0)
 
