@@ -342,6 +342,14 @@ try:
                                             preexec_fn =os.setsid)
         '''
 
+        peltier_process = subprocess.Popen('python3 peltier_control.py' ,
+                                            shell = True,
+                                            stdin = None,
+                                            stdout = None,
+                                            stderr = subprocess.STDOUT,
+                                            bufsize= 1,
+                                            preexec_fn =os.setsid)
+
         argument_parser = argparse.ArgumentParser()
         argument_parser.add_argument("countdown_max", type=int)
         args = argument_parser.parse_args()

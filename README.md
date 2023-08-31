@@ -56,4 +56,4 @@ $ python3 main.py XXX
 This should then open a pygame window showing the camera feed and you can use the joystick to move the camera. In this command, XXX is replaced with an integer of how long to countdown for.
 
 ### Volcano Peltiers
-The peltiers should be run 
+The peltiers should be run at SOMEHTING A and SOMETHING V off the 4 in 1 relay board on the rig. The peltier_control.py file us used to randomly switch these on and off and is started by the main.py script.
