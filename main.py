@@ -16,7 +16,7 @@ import queue
 import os
 import signal
 import json
-
+import RPi.GPIO as GPIO
 
 cubesat_size = (155, 155)
 cubesat_logo = pygame.image.load("figs/logo.png")
@@ -385,9 +385,26 @@ try:
 
 except KeyboardInterrupt:
     print('interrupted with keyboard')
-    # kill joystick process
+    # kill subprocesses
     os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
+    os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
     #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
+
+    # ensure peltiers are turned off
+    GPIO.setmode(GPIO.BCM)
+    peltiers = [26,19,13,6]
+    for peltier in peltiers:
+        GPIO.setup(peltier, GPIO.OUT)
+        GPIO.output(peltier, 0)
+
+    # ensure stepper pins are low
+    GPIOs = [4, 3, 2, 18, 20, 16, 12, 7]
+
+    for gpio in GPIOs:
+        GPIO.setup(gpio, GPIO.OUT)
+        GPIO.output(gpio, 0)
+        
+    
 # kill joystick process at end of game
 os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
 #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)

@@ -13,11 +13,11 @@ def main():
     while True:
         # trun random peltier on
         on_pin = random.randrange(0,4)
-        GPIO.output(peltiers(on_pin), 1)
+        GPIO.output(peltiers[on_pin], 1)
 
         # turn random peltier off
         off_pin = random.randrange(0,4)
-        GPIO.output(peltiers(off_pin), 0)
+        GPIO.output(peltiers[off_pin], 0)
 
         time.sleep(30)
         
