@@ -133,7 +133,7 @@ def make_text(font_size, input_text, color, x, y):
         main_display.blit(message, (x, y))
 
 def make_UI(mode_number):
-    main_display.fill(BACKGROUND_COLOR)
+    #main_display.fill(BACKGROUND_COLOR)
     #crosshairs
     draw_line(CROSSHAIR_COLOR, DISPLAY_WIDTH/2, (DISPLAY_HEIGHT/2 - crosshair_length/2), DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 + (crosshair_length/2), crosshair_width)
     draw_line(CROSSHAIR_COLOR, (DISPLAY_WIDTH/2 - crosshair_length/2), DISPLAY_HEIGHT/2, (DISPLAY_WIDTH/2 + crosshair_length/2), DISPLAY_HEIGHT/2, crosshair_width)
@@ -214,7 +214,7 @@ def end_of_game(end_game_type):
         pygame.display.flip()
 
 
-def main_loop(display,q):
+def main_loop(q):
     global quit_lock, quit_flag, image_buffer_lock, image_buffer
     keep_running = True
     clock = pygame.time.Clock()
@@ -246,7 +246,10 @@ def main_loop(display,q):
         if image_buffer_lock.acquire(timeout=0.001):
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
-                display.blit(pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR'), IMAGE_DISPLAY_LOCATION)
+                print('found image in buffer')
+                recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR')
+                print(recvsurface)
+                main_display.blit(recvsurface, IMAGE_DISPLAY_LOCATION)
             image_buffer_lock.release()
 
         # check for UI updates from joystick process
@@ -357,7 +360,7 @@ try:
         print("Counting down from: " + str(COUNTDOWN_TIME))
 
 
-        cam = cv2.VideoCapture(0)
+        cam = cv2.VideoCapture('/dev/video2')
         pygame.init()
         pygame.joystick.init()
         print("Joystick count: " + str(pygame.joystick.get_count()))
@@ -380,7 +383,7 @@ try:
         t.start()
     while restart == True:
     
-            end_game_type = main_loop(main_display,q)
+            end_game_type = main_loop(q)
             restart = end_of_game(end_game_type)
 
 except KeyboardInterrupt:

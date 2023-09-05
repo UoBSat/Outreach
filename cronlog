@@ -1,0 +1,2 @@
+/home/prove_outreach/Outreach/pinssetup.sh: 3: cd: can't cd to /home/prove_outreach/Outreach
+python3: can't open file 'pinsetup.py': [Errno 2] No such file or directory
