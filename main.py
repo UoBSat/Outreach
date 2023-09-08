@@ -248,15 +248,16 @@ def main_loop(q):
         if image_buffer_lock.acquire(timeout=0.001):
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
-                print('found image in buffer')
+                #print('found image in buffer')
                 recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR')
                 main_display.blit(recvsurface, IMAGE_DISPLAY_LOCATION)
             image_buffer_lock.release()
 
         # collect visual image and display
         vis_image = vis_cam.get_image()
-        vis_recvsurface = pygame.image.frombuffer(vis_image, IMAGE_SIZE[::-1], 'BGR')
-        main_display.blit(vis_recvsurface, IMAGE_DISPLAY_LOCATION)
+        alpha_val = 128 #50% transparency
+        vis_image.set_alpha(0)
+        main_display.blit(vis_image, IMAGE_DISPLAY_LOCATION)
 
         # check for UI updates from joystick process
         
@@ -370,7 +371,7 @@ try:
         pygame.init()
         pygame.camera.init()
         pygame.joystick.init()
-        print("visual camera count: " + str(pygame.camera.get_count()))
+        #print("visual camera count: " + str(pygame.camera.get_count()))
         print("Joystick count: " + str(pygame.joystick.get_count()))
         main_display = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
@@ -379,7 +380,7 @@ try:
         image_reader.start()
 
         # start visual camera streaming
-        vis_cam = pygame.camera.Camera("/dev/video0",(352,288))
+        vis_cam = pygame.camera.Camera("/dev/video0",(1920,1080))
         vis_cam.start()
 
         #start process for joy stick
@@ -429,6 +430,6 @@ vis_cam.stop()
 #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
 
 quit_flag = True
-os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
+os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
 image_reader.join()
 pygame.quit()
