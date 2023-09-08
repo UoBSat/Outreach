@@ -214,6 +214,30 @@ def end_of_game(end_game_type):
             return restart
         pygame.display.flip()
 
+def clean_up_actions():
+    # vis_cam.stop()
+    # kill subprocesses
+    os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
+    os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
+    #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
+
+    # ensure peltiers are turned off
+    GPIO.setmode(GPIO.BCM)
+    peltiers = [26,19,13,6]
+    for peltier in peltiers:
+        GPIO.setup(peltier, GPIO.OUT)
+        GPIO.output(peltier, 0)
+
+    # ensure stepper pins are low
+    GPIOs = [4, 3, 2, 18, 20, 16, 12, 7]
+
+    for gpio in GPIOs:
+        GPIO.setup(gpio, GPIO.OUT)
+        GPIO.output(gpio, 0)
+
+    quit_flag = True
+    image_reader.join()
+    pygame.quit()
 
 def main_loop(q):
     global quit_lock, quit_flag, image_buffer_lock, image_buffer
@@ -279,7 +303,7 @@ def main_loop(q):
         try: 
             line = q.get_nowait()
             line = list(str(line))
-            print(line)
+   
             line = [int(line[3]),int(line[6]),int(line[9])]
 
         except Exception as e:
@@ -403,33 +427,8 @@ try:
 
 except KeyboardInterrupt:
     print('interrupted with keyboard')
-    vis_cam.stop()
-    # kill subprocesses
-    os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
-    os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
-    #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
-
-    # ensure peltiers are turned off
-    GPIO.setmode(GPIO.BCM)
-    peltiers = [26,19,13,6]
-    for peltier in peltiers:
-        GPIO.setup(peltier, GPIO.OUT)
-        GPIO.output(peltier, 0)
-
-    # ensure stepper pins are low
-    GPIOs = [4, 3, 2, 18, 20, 16, 12, 7]
-
-    for gpio in GPIOs:
-        GPIO.setup(gpio, GPIO.OUT)
-        GPIO.output(gpio, 0)
+    # clean up even when cancelled
+    clean_up_actions()
         
-    
-# kill joystick process at end of game
-os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
-vis_cam.stop()
-#os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
-
-quit_flag = True
-os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
-image_reader.join()
-pygame.quit()
+# clean up at end of game   
+clean_up_actions()
