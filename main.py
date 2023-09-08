@@ -1,6 +1,7 @@
 import cv2
 from PIL import Image
 import pygame, pygame.image
+import pygame.camera
 import time
 from gpiozero import Button
 from stepper import Stepper
@@ -229,7 +230,7 @@ def main_loop(q):
     velocity = 3.9
     show_time_up = False
 
-    #defines the onjects in the line printed from joystick that represents if a photo_taken request was sent in the previous line
+    #defines the objects in the line printed from joystick that represents if a photo_taken request was sent in the previous line
     previous_line_element_2 = 0
 
     # magic
@@ -243,14 +244,19 @@ def main_loop(q):
                 end_game_type = "quit"
                 return end_game_type
 
+        # collect thermal image and display
         if image_buffer_lock.acquire(timeout=0.001):
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
                 print('found image in buffer')
                 recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR')
-                print(recvsurface)
                 main_display.blit(recvsurface, IMAGE_DISPLAY_LOCATION)
             image_buffer_lock.release()
+
+        # collect visual image and display
+        vis_image = vis_cam.get_image()
+        vis_recvsurface = pygame.image.frombuffer(vis_image, IMAGE_SIZE[::-1], 'BGR')
+        main_display.blit(vis_recvsurface, IMAGE_DISPLAY_LOCATION)
 
         # check for UI updates from joystick process
         
@@ -362,12 +368,20 @@ try:
 
         cam = cv2.VideoCapture('/dev/video2')
         pygame.init()
+        pygame.camera.init()
         pygame.joystick.init()
+        print("visual camera count: " + str(pygame.camera.get_count()))
         print("Joystick count: " + str(pygame.joystick.get_count()))
         main_display = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
+        # setup thermal camera image reader
         image_reader = ImageReader(cam)
         image_reader.start()
+
+        # start visual camera streaming
+        vis_cam = pygame.camera.Camera("/dev/video0",(352,288))
+        vis_cam.start()
+
         #start process for joy stick
         joystick_process = subprocess.Popen('python3 joystick.py' ,
                                             shell = True,
@@ -388,6 +402,7 @@ try:
 
 except KeyboardInterrupt:
     print('interrupted with keyboard')
+    vis_cam.stop()
     # kill subprocesses
     os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
     os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
@@ -410,6 +425,7 @@ except KeyboardInterrupt:
     
 # kill joystick process at end of game
 os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
+vis_cam.stop()
 #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
 
 quit_flag = True
