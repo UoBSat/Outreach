@@ -236,7 +236,6 @@ def clean_up_actions():
         GPIO.output(gpio, 0)
 
     quit_flag = True
-    image_reader.join()
     pygame.quit()
 
 def main_loop(q):
@@ -431,4 +430,5 @@ except KeyboardInterrupt:
     clean_up_actions()
         
 # clean up at end of game   
+image_reader.join()
 clean_up_actions()
