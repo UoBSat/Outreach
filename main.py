@@ -128,6 +128,15 @@ class ImageReader(threading.Thread):
                 image_buffer_lock.release()
         print("Exiting image loop")
 
+def grab_vis_image():
+    vis_image = vis_cam.get_image()
+    alpha_val = 128 #50% transparency
+    vis_image.set_alpha(0)
+    original_size = (1920,1080)
+    crop_slection_area = original_size
+    display_selection_area = (1920,1080)
+    main_display.blit(vis_image, IMAGE_DISPLAY_LOCATION,(crop_slection_area[0],crop_slection_area[1],display_selection_area[0],display_selection_area[1]))
+
 def make_text(font_size, input_text, color, x, y):
         text = pygame.font.Font("freesansbold.ttf", font_size)
         message = text.render(input_text, True, color)
@@ -277,10 +286,7 @@ def main_loop(q):
             image_buffer_lock.release()
 
         # collect visual image and display
-        vis_image = vis_cam.get_image()
-        alpha_val = 128 #50% transparency
-        vis_image.set_alpha(0)
-        main_display.blit(vis_image, IMAGE_DISPLAY_LOCATION)
+        grab_vis_image(vis_cam)
 
         # check for UI updates from joystick process
         
