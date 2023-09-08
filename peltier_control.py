@@ -19,7 +19,7 @@ def main():
         off_pin = random.randrange(0,4)
         GPIO.output(peltiers[off_pin], 0)
 
-        time.sleep(30)
+        time.sleep(10)
         
 if __name__ == "__main__":
     main()
