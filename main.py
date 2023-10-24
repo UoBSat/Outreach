@@ -8,6 +8,7 @@ import threading
 import copy
 from datetime import datetime
 import argparse
+
 import time
 
 timeMulti = 0.6
@@ -19,23 +20,21 @@ INDEX_Y_NEG = 3
 
 LIMIT_SWITCH_PINS = [6,5,19,13]
 
-class LimitSwitch:
-    def __init__(self, switch_num):
-        self.switch = Button(switch_num)
-        self.limit_triggered = False
-        self.switch.when_pressed = self.triggered
-        self.switch.when_released = self.un_triggered
+FONT_COLOR_GREEN = (0, 150, 0)
+FONT_COLOR_WHITE = (255, 255, 255)
+FONT_COLOR_RED = (150, 0, 0)
 
-    def triggered(self):
-        self.limit_triggered = True
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+GREY = (40, 40, 40)
+LIGHT_GREY = (120, 120, 120)
 
-    def un_triggered(self):
-        self.limit_triggered = False
 
 global limit_switches
 limit_switches = [LimitSwitch(i) for i in LIMIT_SWITCH_PINS]
 
-global positive_x_limit_reached, negative_x_limit_reached, positive_y_limit_reached, negative_y_limit_reached
+LIMIT_SWITCH_PINS = [6,5,19,13]
+
 
 
 def tdelaySpace(x):
@@ -72,6 +71,7 @@ def main_loop(joystick):
     
     xVelocity = 0
     yVelocity = 0
+
     
     while keep_running:
         # Process events first
@@ -79,6 +79,7 @@ def main_loop(joystick):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 keep_running = False
+
             elif event.type == pygame.JOYDEVICEADDED:
                 print("Joystick connected")
                 joystick_conn = True
@@ -179,10 +180,12 @@ def main_loop(joystick):
         previousButton = button
         print(x, y, xVelocity, yVelocity)
 
+
     print("Exiting control loop")
     quit_lock.acquire()
     quit_flag = True
     quit_lock.release()
+
 
 if __name__ == '__main__':
     argument_parser = argparse.ArgumentParser()
@@ -192,3 +195,4 @@ if __name__ == '__main__':
     pygame.joystick.init()
     main_loop((pygame.joystick.Joystick(0) if pygame.joystick.get_count() > 0 else None))
     pygame.quit()
+
