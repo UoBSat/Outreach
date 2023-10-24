@@ -8,7 +8,6 @@ import threading
 import copy
 from datetime import datetime
 import argparse
-
 import time
 
 timeMulti = 0.6
@@ -20,22 +19,23 @@ INDEX_Y_NEG = 3
 
 LIMIT_SWITCH_PINS = [6,5,19,13]
 
-FONT_COLOR_GREEN = (0, 150, 0)
-FONT_COLOR_WHITE = (255, 255, 255)
-FONT_COLOR_RED = (150, 0, 0)
+class LimitSwitch:
+    def __init__(self, switch_num):
+        self.switch = Button(switch_num)
+        self.limit_triggered = False
+        self.switch.when_pressed = self.triggered
+        self.switch.when_released = self.un_triggered
 
-GREEN = (0, 255, 0)
-BLACK = (0, 0, 0)
-GREY = (40, 40, 40)
-LIGHT_GREY = (120, 120, 120)
+    def triggered(self):
+        self.limit_triggered = True
 
+    def un_triggered(self):
+        self.limit_triggered = False
 
 global limit_switches
 limit_switches = [LimitSwitch(i) for i in LIMIT_SWITCH_PINS]
 
-LIMIT_SWITCH_PINS = [6,5,19,13]
-
-
+global positive_x_limit_reached, negative_x_limit_reached, positive_y_limit_reached, negative_y_limit_reached
 
 def tdelaySpace(x):
     #given an input of a number, calculates time delay between each step of the motor. This is inversely proportional to speed of motor.
