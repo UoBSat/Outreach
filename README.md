@@ -49,7 +49,8 @@ To start the camera service run the following commands:
 $ sudo modprobe v4l2loopback
 $ sudo thermapp
 ```
-Now leave this process and open a new terminal and run:
+### GUI start
+Now leave the thermapp process and open a new terminal and run:
 
 ```
 $ cd /Outreach
