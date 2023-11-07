@@ -32,6 +32,17 @@ $ sudo thermapp
 Then it can be used as an ordinary webcam with OpenCV. There will be a script to automate this and launch...somewhere....
 
 ## Start up and Use
+### Cable connection
+These are the steps for connecting all the necessary cables:
+ - Mains power to power supply
+ - Mains power to screen
+ - HDMI from pi to screen
+ - USB from joystick to pi
+ - Mains power to pi (pi power adapter), screen shows boot up
+ - Pelitier power cables (raw end wires) to crocodile click cables into channel 2 on power supply
+ - Stepper power calbles (banana cables) to channel 1 on power supply
+ - Bind channels (shared ground cable)
+ - Turn on power supply (main push switch, then channel 1 and channel 2 buttoms followed by output button)
 ### Thermal camera (ThermApp)
 To start the camera service run the following commands:
 ```
