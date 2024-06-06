@@ -5,6 +5,7 @@ Code is divided into 2 major sections:
 2) The stepper motor controller interface
 
 ## Setup
+### Thermal Camera
 Install a little software that emulates thermapp as a vl42 device:
 ```
 $ sudo apt install libusb-dev libusb-1.0-0-dev
@@ -30,30 +31,29 @@ $ sudo thermapp
 ```
 
 Then it can be used as an ordinary webcam with OpenCV. There will be a script to automate this and launch...somewhere....
+### Pin Initialization
+On the startup, the Pi's GPIO pins need to be set to low (not floating). To do this a service need to be setup on the PI that pulls the pins low on start up. This involves three files:
+- pinsetup.py
+- pinsteup.sh
+- pintsetup.service
+
+Follow the instructions here to setup this up:
+https://www.instructables.com/Raspberry-Pi-Launch-Python-script-on-startup/
 
 ## Start up and Use
-### Cable connection
-These are the steps for connecting all the necessary cables:
- - Mains power to power supply
- - Mains power to screen
- - HDMI from pi to screen
- - USB from joystick to pi
- - Mains power to pi (pi power adapter), screen shows boot up
- - Pelitier power cables (raw end wires) to crocodile clip cables into channel 2 on power supply (5V 1A)
- - Stepper power calbles (banana cables) to channel 1 on power supply (10V 3A)
- - Bind channels (shared ground cable)
- - Turn on power supply (main push switch, then channel 1 and channel 2 buttoms followed by output button)
 ### Thermal camera (ThermApp)
-To start the camera service run the following commands:
+IF YOU WANT TO RUN THE CAMERA SEPERATELY, run the following commands (else skip this and run the main.py python file as below):
 ```
 $ sudo modprobe v4l2loopback
 $ sudo thermapp
 ```
-### GUI start
-Now leave the thermapp process and open a new terminal and run:
+Now leave this process and open a new terminal and run, this is the core programme of the entire game:
 
 ```
 $ cd /Outreach
 $ python3 main.py XXX
 ```
 This should then open a pygame window showing the camera feed and you can use the joystick to move the camera. In this command, XXX is replaced with an integer of how long to countdown for.
+
+### Volcano Peltiers
+The peltiers should be run at SOMEHTING A and SOMETHING V off the 4 in 1 relay board on the rig. The peltier_control.py file us used to randomly switch these on and off and is started by the main.py script.

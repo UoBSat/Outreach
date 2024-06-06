@@ -1,7 +1,6 @@
 import cv2
 from PIL import Image
 import pygame, pygame.image
-import pygame.camera
 import time
 from gpiozero import Button
 from stepper import Stepper
@@ -112,10 +111,9 @@ class ImageReader(threading.Thread):
             # Read image
             ret, cv_image = self.cam.read()
             if cv_image is not None:
-                #img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
-                img = cv_image
-                # crop the  image
-                pixel_crop = 400
+                img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+                # crop the image
+                pixel_crop = 200
                 original_image = (640,480)
                 crop_x_start = int((original_image[0]-pixel_crop)/2)
                 crop_x_end = int(original_image[0]-(original_image[0]-pixel_crop)/2)
@@ -128,15 +126,6 @@ class ImageReader(threading.Thread):
                 image_buffer = copy.copy(buff)
                 image_buffer_lock.release()
         print("Exiting image loop")
-
-def grab_vis_image():
-    vis_image = pygame.transform.rotate(vis_cam.get_image(),90)
-    alpha_val = 128 #50% transparency
-    vis_image.set_alpha(alpha_val)
-    original_size = (1920,1080)
-    crop_vis_image = vis_image.subsurface(pygame.Rect(520,430,400,400))
-    crop_vis_image = pygame.transform.scale(crop_vis_image,(1000,1000))
-    main_display.blit(crop_vis_image, (0,0))
 
 def make_text(font_size, input_text, color, x, y):
         text = pygame.font.Font("freesansbold.ttf", font_size)
@@ -224,29 +213,6 @@ def end_of_game(end_game_type):
             return restart
         pygame.display.flip()
 
-def clean_up_actions():
-    # vis_cam.stop()
-    # kill subprocesses
-    os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
-    os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
-    #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
-
-    # ensure peltiers are turned off
-    GPIO.setmode(GPIO.BCM)
-    peltiers = [26,19,13,6]
-    for peltier in peltiers:
-        GPIO.setup(peltier, GPIO.OUT)
-        GPIO.output(peltier, 0)
-
-    # ensure stepper pins are low
-    GPIOs = [4, 3, 2, 18, 20, 16, 12, 7]
-
-    for gpio in GPIOs:
-        GPIO.setup(gpio, GPIO.OUT)
-        GPIO.output(gpio, 0)
-
-    quit_flag = True
-    pygame.quit()
 
 def main_loop(q):
     global quit_lock, quit_flag, image_buffer_lock, image_buffer
@@ -263,7 +229,7 @@ def main_loop(q):
     velocity = 3.9
     show_time_up = False
 
-    #defines the objects in the line printed from joystick that represents if a photo_taken request was sent in the previous line
+    #defines the onjects in the line printed from joystick that represents if a photo_taken request was sent in the previous line
     previous_line_element_2 = 0
 
     # magic
@@ -277,17 +243,14 @@ def main_loop(q):
                 end_game_type = "quit"
                 return end_game_type
 
-        # collect thermal image and display
         if image_buffer_lock.acquire(timeout=0.001):
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
-                #print('found image in buffer')
+                print('found image in buffer')
                 recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR')
+                print(recvsurface)
                 main_display.blit(recvsurface, IMAGE_DISPLAY_LOCATION)
             image_buffer_lock.release()
-
-        # collect visual image and display
-        grab_vis_image()
 
         # check for UI updates from joystick process
         
@@ -309,7 +272,7 @@ def main_loop(q):
         try: 
             line = q.get_nowait()
             line = list(str(line))
-   
+            print(line)
             line = [int(line[3]),int(line[6]),int(line[9])]
 
         except Exception as e:
@@ -399,20 +362,12 @@ try:
 
         cam = cv2.VideoCapture('/dev/video2')
         pygame.init()
-        pygame.camera.init()
         pygame.joystick.init()
-        #print("visual camera count: " + str(pygame.camera.get_count()))
         print("Joystick count: " + str(pygame.joystick.get_count()))
         main_display = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
-        # setup thermal camera image reader
         image_reader = ImageReader(cam)
         image_reader.start()
-
-        # start visual camera streaming
-        vis_cam = pygame.camera.Camera("/dev/video0",(1920,1080))
-        vis_cam.start()
-
         #start process for joy stick
         joystick_process = subprocess.Popen('python3 joystick.py' ,
                                             shell = True,
@@ -433,9 +388,31 @@ try:
 
 except KeyboardInterrupt:
     print('interrupted with keyboard')
-    # clean up even when cancelled
-    clean_up_actions()
+    # kill subprocesses
+    os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
+    os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
+    #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
+
+    # ensure peltiers are turned off
+    GPIO.setmode(GPIO.BCM)
+    peltiers = [26,19,13,6]
+    for peltier in peltiers:
+        GPIO.setup(peltier, GPIO.OUT)
+        GPIO.output(peltier, 0)
+
+    # ensure stepper pins are low
+    GPIOs = [4, 3, 2, 18, 20, 16, 12, 7]
+
+    for gpio in GPIOs:
+        GPIO.setup(gpio, GPIO.OUT)
+        GPIO.output(gpio, 0)
         
-# clean up at end of game   
+    
+# kill joystick process at end of game
+os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
+#os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
+
+quit_flag = True
+os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
 image_reader.join()
-clean_up_actions()
+pygame.quit()
