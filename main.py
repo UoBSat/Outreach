@@ -223,6 +223,11 @@ def end_of_game(end_game_type):
             restart = False
             return restart
         pygame.display.flip()
+        
+        time.sleep(5)
+        clean_up_actions()
+        pygame.quit()
+        sys.exit()
 
 def clean_up_actions():
     # vis_cam.stop()
@@ -232,11 +237,11 @@ def clean_up_actions():
     #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
 
     # ensure peltiers are turned off
-    GPIO.setmode(GPIO.BCM)
-    peltiers = [26,19,13,6]
-    for peltier in peltiers:
-        GPIO.setup(peltier, GPIO.OUT)
-        GPIO.output(peltier, 0)
+    # GPIO.setmode(GPIO.BCM)
+    # peltiers = [26,19,13,6]
+    # for peltier in peltiers:
+    #     GPIO.setup(peltier, GPIO.OUT)
+    #     GPIO.output(peltier, 0)
 
     # ensure stepper pins are low
     GPIOs = [4, 3, 2, 18, 20, 16, 12, 7]
@@ -246,7 +251,6 @@ def clean_up_actions():
         GPIO.output(gpio, 0)
 
     quit_flag = True
-    pygame.quit()
 
 def main_loop(q):
     global quit_lock, quit_flag, image_buffer_lock, image_buffer
@@ -262,6 +266,7 @@ def main_loop(q):
     photos_left = 4
     velocity = 3.9
     show_time_up = False
+    line = []
 
     #defines the objects in the line printed from joystick that represents if a photo_taken request was sent in the previous line
     previous_line_element_2 = 0
@@ -309,14 +314,14 @@ def main_loop(q):
         try: 
             line = q.get_nowait()
             line = list(str(line))
-   
+            print(f' RECIEVED LINE: {line}')
             line = [int(line[3]),int(line[6]),int(line[9])]
-
+        
         except Exception as e:
-            #print('errors in communicating with joy stick programme')
-            #print(e)
+            print('errors in communicating with joy stick programme')
+            print(e)
             line= [0,0,0]
-        #print(f' RECIEVED LINE: {line}')
+        
         
         mode_number = line[0]
         if line[1] == 1:
@@ -391,19 +396,21 @@ try:
                                             preexec_fn =os.setsid)
 
         argument_parser = argparse.ArgumentParser()
-        argument_parser.add_argument("countdown_max", type=int)
+        argument_parser.add_argument("countdown_max", type=int,help="Seconds the game will run for")
+        argument_parser.add_argument("game_type", type = int, help = "1 for normal, 0 for space")
         args = argument_parser.parse_args()
         COUNTDOWN_TIME = args.countdown_max
+        GAME_TYPE = args.game_type
         print("Counting down from: " + str(COUNTDOWN_TIME))
 
 
         cam = cv2.VideoCapture('/dev/video2')
         pygame.init()
-        pygame.camera.init()
         pygame.joystick.init()
         #print("visual camera count: " + str(pygame.camera.get_count()))
         print("Joystick count: " + str(pygame.joystick.get_count()))
         main_display = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        # main_display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
         # setup thermal camera image reader
         image_reader = ImageReader(cam)
@@ -414,18 +421,25 @@ try:
         vis_cam.start()
 
         #start process for joy stick
-        joystick_process = subprocess.Popen('python3 joystick.py' ,
+        joystick_process = subprocess.Popen(f"python3 joystick.py {GAME_TYPE}",
                                             shell = True,
                                             stdin = None,
                                             stdout = subprocess.PIPE,
                                             stderr = subprocess.STDOUT,
                                             bufsize= 1,
                                             preexec_fn =os.setsid)
-        
         q = queue.LifoQueue()
         t = threading.Thread(target=enqueue_output,args=(joystick_process.stdout,q))
         t.daemon = True
         t.start()
+        print("here")
+        while True:
+            try: 
+                line = q.get_nowait()
+                line = list(str(line))
+                print(f' RECIEVED LINE: {line}')
+            except:
+                print("Failed")
     while restart == True:
     
             end_game_type = main_loop(q)

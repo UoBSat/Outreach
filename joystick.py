@@ -11,8 +11,9 @@ import argparse
 import time
 import json
 
-timeMulti = 0.6
 
+timeMulti = 0.6
+GAME_TYPE = 0
 INDEX_X_POS = 0
 INDEX_X_NEG = 1
 INDEX_Y_POS = 2
@@ -37,7 +38,6 @@ global limit_switches
 limit_switches = [LimitSwitch(i) for i in LIMIT_SWITCH_PINS]
 
 global positive_x_limit_reached, negative_x_limit_reached, positive_y_limit_reached, negative_y_limit_reached
-
 
 def tdelaySpace(speed) -> float:
     """
@@ -109,7 +109,13 @@ def main_loop(joystick):
     tSincex = time.time()
     tSincey = time.time()
     
-    spaceMode = False
+    
+    if GAME_TYPE == 1:
+        spaceMode = False
+    else:
+        spaceMode = True
+    
+    
     imageToBeCaptured = False
     correctPostion = False
     mode_int_flag = 0
@@ -267,8 +273,10 @@ def main_loop(joystick):
 
 if __name__ == '__main__':
     argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument("GAME_TYPE", type=int,help="Seconds the game will run for")
     args = argument_parser.parse_args()
-
+    
+    GAME_TYPE = args.GAME_TYPE
     pygame.init()
     pygame.joystick.init()
     main_loop((pygame.joystick.Joystick(0) if pygame.joystick.get_count() > 0 else None))
