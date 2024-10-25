@@ -29,7 +29,7 @@ Now, whenever you want to read from the thermapp, first connect, keep cap on, th
 $ sudo thermapp
 ```
 
-Then it can be used as an ordinary webcam with OpenCV. There will be a script to automate this and launch...somewhere....
+Then it can be used as an ordinary webcam with OpenCV.
 
 ## Start up and Use
 ### Cable connection
