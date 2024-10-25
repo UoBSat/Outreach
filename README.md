@@ -5,6 +5,7 @@ Code is divided into 2 major sections:
 2) The stepper motor controller interface
 
 ## Setup
+OS version: Raspbian Buster
 Install a little software that emulates thermapp as a vl42 device:
 ```
 $ sudo apt install libusb-dev libusb-1.0-0-dev
