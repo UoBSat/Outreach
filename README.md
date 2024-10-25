@@ -14,12 +14,26 @@ git clone https://github.com/encryptededdy/ThermAppCam.git
 cd ThermAppCam/thermapp
 ```
 
-Here, the makefile is setup for older versions of cmake which like the libraries linked before the file name, but newer versions are unable to find libusb and similar libraries this way. So our best bet is to write the gcc commands ourselves since there are only 3 files instead of wasting time otherwise.
+Here, the makefile is setup for older versions of cmake which like the libraries linked before the file name, but newer versions are unable to find libusb and similar libraries this way. Following the install instructions in the thermapp repo, do:
+```
+cd thermapp
+make
+sudo make install
+```
+or alternatively
 ```
 gcc -Wall -c -o thermapp.o thermapp.c -I/usr/include/libusb-1.0 -lpthread
-gcc thermapp.o main.o   -o thermapp -lusb-1.0 -lpthread
+gcc thermapp.o main.c -o thermapp -lusb-1.0 -lpthread
 ```
+You need to redefine the video device to be video1, therefore change line 13 in main.c from 
 
+```
+#define VIDEO_DEVICE "/dev/video0"
+```
+to 
+```
+#define VIDEO_DEVICE "/dev/video1"
+```
 Now when you do make, it should say thermapp is already setup or similar.
 Next:
 ```
