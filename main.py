@@ -154,6 +154,7 @@ class ImageReader(threading.Thread):
 
     def __init__(self, cam):
         super().__init__()
+        print("Grabbing thermal image")
         self.cam = cam
 
     def run(self) -> None:
@@ -166,7 +167,7 @@ class ImageReader(threading.Thread):
                 cam.release()
                 stop = True
             quit_lock.release()
-
+            
             # Read image
             ret, cv_image = self.cam.read()
             if cv_image is not None:
@@ -212,6 +213,7 @@ def countdown(seconds,screen,font,WIDTH, HEIGHT):
         pygame.time.wait(1000)
 def display_init():
     global screen_width, screen_height, main_display
+    print("Grabbing visual image")
     vis_cam = pygame.camera.Camera("/dev/video0",(200,200))
     vis_cam.start()
     screen_info = pygame.display.Info()
@@ -234,6 +236,7 @@ def display_init():
     return text, [screen_height,screen_width],main_display,vis_cam
 
 def grab_vis_image(vis_cam,main_display):
+    
     vis_image = pygame.transform.rotate(vis_cam.get_image(), 90)
     alpha_val = 128 #100% transparency
     vis_image.set_alpha(alpha_val)
@@ -258,7 +261,6 @@ def main_loop(q,text,main_display,time_left,photos_left):
     time_left = 10000
     countdown(10, main_display, text, screen_width, screen_height)
     score = 0
-    print("here")
     while (time_left> 0) and (photos_left> 0):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -311,7 +313,6 @@ def main_loop(q,text,main_display,time_left,photos_left):
                 mode = 'ground'
             else:
                 None
-            print("Here1")
         
     quit_lock.acquire()
     quit_flag = True
