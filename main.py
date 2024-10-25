@@ -219,7 +219,7 @@ def display_init():
     screen_width = screen_info.current_w
     # screen_width -= screen_width/100
     screen_height -= screen_height*0.1
-    main_display = pygame.display.set_mode((screen_width, screen_height))
+    main_display = pygame.display.set_mode((int(screen_width), int(screen_height)))
     cubesat_logo = pygame.transform.scale(pygame.image.load("figs/logo.png"), (int(0.1 * screen_width) ,int(0.1 * screen_width)) )  
     text = pygame.font.Font("freesansbold.ttf", int(screen_width/10))
     
