@@ -276,7 +276,7 @@ def main_loop(q,text,main_display,time_left,photos_left):
         IMAGE_DISPLAY_LOCATION = (-(IMAGE_SIZE[1]-screen_width)/2-200, -(IMAGE_SIZE[0]-screen_height)/2)
         # IMAGE_DISPLAY_LOCATION = (screen_width,screen_height)
         if image_buffer_lock.acquire(timeout=0.001):
-            print("Displaying visual image")
+            
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
                 #print('found image in buffer')
@@ -288,6 +288,7 @@ def main_loop(q,text,main_display,time_left,photos_left):
         
         
         grab_vis_image(vis_cam, main_display)
+        print("Displaying visual image")
         make_UI(main_display,photos_left,mode,font,time_left,score)
         pygame.display.flip()
         avg_heat = image_buffer.mean()
