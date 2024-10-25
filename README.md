@@ -54,6 +54,6 @@ Now leave the thermapp process and open a new terminal and run:
 
 ```
 $ cd /Outreach
-$ python3 main.py XXX
+$ python3 main.py XXX Y Z
 ```
-This should then open a pygame window showing the camera feed and you can use the joystick to move the camera. In this command, XXX is replaced with an integer of how long to countdown for.
+This should then open a pygame window showing the camera feed and you can use the joystick to move the camera. In this command, XXX is replaced with an integer of how long to countdown for. Y is replaced with 1, and Z is replaced with the amount of photos needed. 
