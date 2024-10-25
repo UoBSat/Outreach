@@ -47,7 +47,7 @@ sudo thermapp
 Then it can be used as an ordinary webcam with OpenCV.
 The following python packages need to be installed via pip:
 ```
-sudo pip install cv2,pygame,gpiozero,threading,pillow,numpy,queue,signal,ast,RPi
+sudo pip install opencv-python pygame gpiozero threaded pillow numpy queue signal ast RPi
 ```
 
 ## Start up and Use
