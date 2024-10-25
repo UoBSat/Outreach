@@ -285,7 +285,7 @@ def main_loop(q,text,main_display,time_left,photos_left):
                 main_display.blit(recvsurface, (0,0))
             image_buffer_lock.release()
         
-        
+        print("Displaying visual image")
         grab_vis_image(vis_cam, main_display)
         make_UI(main_display,photos_left,mode,font,time_left,score)
         pygame.display.flip()
