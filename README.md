@@ -39,8 +39,8 @@ These are the steps for connecting all the necessary cables:
  - HDMI from pi to screen
  - USB from joystick to pi
  - Mains power to pi (pi power adapter), screen shows boot up
- - Pelitier power cables (raw end wires) to crocodile clip cables into channel 2 on power supply (5V 1A)
- - Stepper power calbles (banana cables) to channel 1 on power supply (10V 3A)
+ - Pelitier power cables (raw end wires) to crocodile clip cables into channel 2 on power supply (5V 2A)
+ - Stepper power calbles (banana cables) to channel 1 on power supply (12V 0.5A)
  - Bind channels (shared ground cable)
  - Turn on power supply (main push switch, then channel 1 and channel 2 buttoms followed by output button)
 ### Thermal camera (ThermApp)
