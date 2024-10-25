@@ -10,274 +10,235 @@ from datetime import datetime
 import argparse
 import time
 import json
+import os
+
+Game_mode = None
+GAME_MODE = None
 
 
-timeMulti = 0.6
-GAME_TYPE = 0
-INDEX_X_POS = 0
-INDEX_X_NEG = 1
-INDEX_Y_POS = 2
-INDEX_Y_NEG = 3
-
-LIMIT_SWITCH_PINS = [23,24,8,25]
 
 class LimitSwitch:
+    from gpiozero import Button
     def __init__(self, switch_num):
         self.switch = Button(switch_num)
-        self.limit_triggered = False
-        self.switch.when_pressed = self.triggered
-        self.switch.when_released = self.un_triggered
-
-    def triggered(self):
-        self.limit_triggered = True
-
-    def un_triggered(self):
-        self.limit_triggered = False
+    def get_state(self):
+        return self.switch.is_active
         
-global limit_switches
-limit_switches = [LimitSwitch(i) for i in LIMIT_SWITCH_PINS]
-
-global positive_x_limit_reached, negative_x_limit_reached, positive_y_limit_reached, negative_y_limit_reached
-
-def tdelaySpace(speed) -> float:
-    """
-    Given an input of a number, calculates time delay between each step of the motor. This is inversely proportional to speed of motor.
-
-    :param speed: Speed of the steppers in rotation per second
-    :returns: Delay between each step of the stepper motor in seconds.
-    """
-
-    speed = abs(speed)
-    if speed == 0:
-        speed = 0.1
-    y = (1/(speed * 0.01)) * timeMulti - 0.15 # Offsetting the time curve towards 0, use it to change sensitivity of joystick( increase it for more)
-    return y
-
-def tdelayNonSpace(x):
-    #given an input of a number, calculates time delay between each step of the motor. This is inversely proportional to speed of motor.
-    y = (-1)*timeMulti*(x+1)*(x-1)
-    return y
-
-def start_routine():
-    #finding x axis
-    stepper_1 = Stepper(4,3,2,17) 
-    stepper_2 = Stepper(20,16,12,7)
-    gantry_max_coords = (0, 0)
-    while not limit_switches[INDEX_X_POS].limit_triggered:
-        stepper_2.step_clockwise()
-    #print('done x pos')
-    while not limit_switches[INDEX_X_NEG].limit_triggered:
-        stepper_2.step_counterclockwise()
-        gantry_max_coords = (gantry_max_coords[0] + 1, gantry_max_coords[1])
-    #print('done x neg')
-    #finding y axis
-    while not limit_switches[INDEX_Y_POS].limit_triggered:
-        stepper_1.step_counterclockwise()
-    #print('done y pos')
-    while not limit_switches[INDEX_Y_NEG].limit_triggered:
-        stepper_1.step_clockwise()
-        gantry_max_coords = (gantry_max_coords[0] , gantry_max_coords[1] + 1)
-    #print('done y neg')
         
-    #moves gantry away from edge of board
-    for i in range(200):
-        stepper_2.step_clockwise()
-    for i in range(200):
-        stepper_1.step_counterclockwise()
-    return gantry_max_coords
-    
+
+
 
 def main_loop(joystick):
-    
-    """#verifying coordinates
-    gantry_max_coords = start_routine()
-    #print(gantry_max_coords)
-    dictionary = {
-        "gantry_max_x" : gantry_max_coords[0],
-        "gantry_max_y" : gantry_max_coords[1]
-    }
-    with open("config.json", "w") as outfile:
-        json.dump(dictionary, outfile)
-    gantry_coords = (200, 200)"""
-    
+    global GAME_TYPE, Game_mode
     global quit_lock, quit_flag
     keep_running = True
-    joystick_conn = False
-    stepper_1 = Stepper(4,3,2,17)
-    stepper_2 = Stepper(20,16,12,7)
     
-    tSincex = time.time()
-    tSincey = time.time()
+    dirPin_x = 2
+    stepPin_x = 13
+    
+    dirPin_y = 3
+    stepPin_y = 12
+    
+    x_stepper = Stepper(stepPin_x,dirPin_x)
+    
+    y_stepper = Stepper(stepPin_y,dirPin_y)
+    
+    x_plus_lim = LimitSwitch(4)
+    
+    x_minus_lim = LimitSwitch(17)
+    
+    y_plus_lim = LimitSwitch(27)
+    
+    y_minus_lim = LimitSwitch(22)
     
     
-    if GAME_TYPE == 1:
-        spaceMode = False
-    else:
-        spaceMode = True
+   
     
-    
-    imageToBeCaptured = False
-    correctPostion = False
-    mode_int_flag = 0
-    correct_int_flag = 0
+    imageToBeCaptured = 0
     capture_int_flag = 0
-    
-    previous_photo_button = 0
-    previous_mode_button = 0
-    
-    timeOfLoop = 1e-10 # Arbitrary initial value
-    initial_time = time.time()
 
-    xPrevious = 0
-    yPrevious = 0
+    speed_x = 0
+    speed_y = 0
     
-    xVelocity = 0
-    yVelocity = 0
-
-    # printing initial values of joystick status
-    print([mode_int_flag,capture_int_flag ,correct_int_flag])
     
     # setup shared file for communication with main process
-    config = {'space_mode_flag':spaceMode,'image_to_be_captured':imageToBeCaptured ,'correct_postion':correctPostion}
+    config = {'space_mode_flag':Game_mode,'image_to_be_captured':imageToBeCaptured ,'correct_postion':0}
     
-    while keep_running:
-        # Process events first
+    
+    buffer = False
+    i =0 
+    capture_int_flag = 0
+    imageToBeCaptured = 0
         
+    while keep_running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 keep_running = False
             elif event.type == pygame.JOYDEVICEADDED:
-                print("Joystick connected")
-                joystick_conn = True
                 joystick.init()
             elif event.type == pygame.JOYDEVICEREMOVED:
                 print("joystick removed")
-                joystick_conn = False
+                raise Exception("Joystick not connected")
+                
+                
+        x = joystick.get_axis(0)
+        y = -joystick.get_axis(1)
+        mode_button = joystick.get_button(3) # lever_on_bottom
+        photo_button = joystick.get_button(0) # first click of red trigger
 
-        if joystick_conn:
-            x = joystick.get_axis(0)
-            y = -joystick.get_axis(1)
-            mode_button = joystick.get_button(4) # grey button on the side
-            photo_button = joystick.get_button(0) # first click of red trigger
-        else:
-            x = 0.0
-            y = 0.0
-            mode_button = 0
-            photo_button = 0
-    
         
-        if mode_button == 1:
-            if previous_mode_button == 0:
-                #change joystick control type
-                spaceMode = not spaceMode
-                if spaceMode == 1:
-                    mode_int_flag = 1
+
+        if GAME_TYPE == 1:
+            
+            x_plus_cond = (x>0.1)and (x!= 0) and (x_plus_lim.get_state() != True)
+            x_minus_cond = (x<-0.1) and (x !=0)  and (x_minus_lim.get_state() != True)
+            y_plus_cond = (y>0.1)and (y!= 0)  and (y_plus_lim.get_state() != True)
+            y_mins_cond = (y<-0.1) and (y !=0)  and (y_minus_lim.get_state() != True)
+        
+            
+            speed_x = 250*abs(x)**4+100*abs(x)+130
+            speed_y = 250*abs(y)**4+100*abs(y)+130
+            
+            if x_plus_cond == True:
+                
+                
+                
+                x_stepper.clockwise_inf(speed_x)
+                if y_plus_cond== True:
+                    #Bottem Left
+                    
+                    x_stepper.clockwise_inf(speed_x)
+                    y_stepper.clockwise_inf(abs(speed_y))
+                    x= 1
+                elif y_mins_cond == True:
+                    
+                    x_stepper.clockwise_inf(speed_x)
+                    y_stepper.anticlockwise_inf(abs(speed_y))
                 else:
-                    mode_int_flag = 0
-                #config['space_mode_flag'] = spaceMode
-                # log to config file current joy stick related state
-                #with open('config.json','w') as configFile:
-                #    json.dump(config,configFile)
-                #    configFile.close()
-                xVelocity = 0
-                yVelocity = 0
-            print([mode_int_flag,capture_int_flag ,correct_int_flag])
-        if photo_button == 1:
-            if previous_photo_button == 0:
-                #photo capture event
-                imageToBeCaptured = not imageToBeCaptured
-                if imageToBeCaptured == True:
-                    capture_int_flag = 1
+                    x_stepper.clockwise_inf(speed_x)
+                    y_stepper.stop()
+            
+            
+            elif x_minus_cond == True:
+                x_stepper.anticlockwise_inf(speed_x)
+                if y_plus_cond== True:
+                    y_stepper.clockwise_inf(speed_y)
+                elif y_mins_cond == True:
+                    y_stepper.anticlockwise_inf(abs(speed_y))
                 else:
-                    capture_int_flag = 0
-            print([mode_int_flag,capture_int_flag ,correct_int_flag])
+                    y_stepper.stop()
+            
+        
+            elif ((x_minus_cond & x_plus_cond) == False) &(y_plus_cond == True):
+                y_stepper.clockwise_inf(speed_y)
+            elif ((x_minus_cond & x_plus_cond) == False) &(y_mins_cond == True):
+                y_stepper.anticlockwise_inf(abs(speed_y))
+            else:
+                y_stepper.stop()
+                x_stepper.stop()
+                
+                
+                
+                
+                
+                
+        elif GAME_TYPE == 0:
+            limit_low = 300
+            limit_high = 1900
+            if x>0:
+                speed_x +=0.05
+                
+            elif x<0:
+                speed_x -= 0.05
+            if y<0:
+                speed_y -= 0.05
+            elif y>0 :
+                speed_y += 0.05
+            
+            speed_x = min(speed_x, limit_high)
+            speed_x = max(speed_x, -limit_high)
+            speed_y = min(speed_y, limit_high)
+            speed_y = max(speed_y,-limit_high)
+            
+            if (speed_x> limit_low) &(x_plus_lim.get_state() != True):
 
-                #config['image_to_be_captured'] = imageToBeCaptured
-                # log to config file current joy stick related state
-                #with open('config.json','w') as configFile:
-                #    json.dump(config,configFile)
-                #    configFile.close()
-        # Here raw x and y are considered accelerations
-        xVelocity = xVelocity + 100*(0.5 * timeOfLoop * (x + xPrevious))
-        yVelocity = yVelocity + 100*(0.5 * timeOfLoop * (y + yPrevious))
-        
+                x_stepper.clockwise_inf(speed_x)
+                
+                if (speed_y> limit_low) & (y_plus_lim.get_state() != True):
+                    y_stepper.clockwise_inf(speed_y)
+                elif (speed_y < - limit_low) & (y_minus_lim.get_state() != True):
+                    y_stepper.anticlockwise_inf(abs(speed_y))
+                elif (speed_y>-limit_low) and (speed_y < limit_low):
+                    y_stepper.stop()
 
-        if xVelocity > 530:
-            xVelocity = 530
-        elif xVelocity < -530:
-            xVelocity = -530
-        if yVelocity > 530:
-            yVelocity = 530
-        elif yVelocity < -530:
-            yVelocity = -530
+                    
+                
+                
+                
+            elif (speed_x<-limit_low)& (x_minus_lim.get_state() != True):
+                x_stepper.anticlockwise_inf(abs(speed_x))
+                
+                if (speed_y> limit_low) & (y_plus_lim.get_state() != True):
+                    y_stepper.clockwise_inf(speed_y)
+                elif (speed_y < - limit_low) & (y_minus_lim.get_state() != True):
+                    y_stepper.anticlockwise_inf(abs(speed_y))
+                elif (speed_y>-limit_low) and (speed_y < limit_low):
+                    y_stepper.stop()
+                
+                
+            elif (speed_x>-limit_low) and (speed_x < limit_low):
+                x_stepper.stop()
+                if (speed_y> limit_low) & (y_plus_lim.get_state() != True):
+                    y_stepper.clockwise_inf(speed_y)
+                elif (speed_y < - limit_low) & (y_minus_lim.get_state() != True):
+                    y_stepper.anticlockwise_inf(abs(speed_y))
+                elif (speed_y>-limit_low) and (speed_y < limit_low):
+                    y_stepper.stop()
+                
+                
+                    
+            
         
-        #print (xVelocity, yVelocity)
+                
+        if (mode_button != 0) and (buffer == False):
+            speed_x = speed_y = 0
+            
+            GAME_TYPE = int(not GAME_TYPE)
+            if GAME_TYPE == 1: 
+                Game_mode = 'ground'
+            else:
+                Game_mode = 'space'
+            buffer = True
+            i = 0
 
-        xPrevious = x
-        yPrevious = y
 
-        x_inp = 0
-        y_inp = 0
-        
-        if spaceMode == True:
-            xdelayReq = tdelaySpace(xVelocity)
-            ydelayReq = tdelaySpace(yVelocity)
-            x_inp = xVelocity
-            y_inp = yVelocity
-        else:
-            xdelayReq = tdelayNonSpace(x)
-            ydelayReq = tdelayNonSpace(y)
-            x_inp = x
-            y_inp = y
-        
-        currentT = time.time()
-        if x_inp > 0 and not limit_switches[INDEX_X_POS].limit_triggered:
-            if xdelayReq <= (currentT-tSincex):
-                stepper_2.step_clockwise()
-                #gantry_max_coords = (gantry_coords[0] + 1, gantry_coords[1])
-                tSincex = currentT
-                #print(x_inp)
-        elif x_inp < 0 and not limit_switches[INDEX_X_NEG].limit_triggered:
-            if xdelayReq <= (currentT-tSincex):
-                stepper_2.step_counterclockwise()
-                #gantry_max_coords = (gantry_coords[0] - 1, gantry_coords[1])
-                tSincex = currentT
-                #print(x_inp)
-        if y_inp > 0 and not limit_switches[INDEX_Y_POS].limit_triggered:
-            if ydelayReq <= (currentT-tSincey):
-                stepper_1.step_counterclockwise()
-                #gantry_max_coords = (gantry_coords[0], gantry_coords[1] + 1)
-                tSincey = currentT
-                #print(y_inp)
-        elif y_inp < 0 and not limit_switches[INDEX_Y_NEG].limit_triggered:
-            if ydelayReq <= (currentT-tSincey):
-                stepper_1.step_clockwise()
-                #gantry_max_coords = (gantry_coords[0], gantry_coords[1] - 1)
-                tSincey = currentT
-                #print(y_inp)
+        if (photo_button == 1) and (buffer == False):
+            buffer = True
+            i = 0
+            capture_int_flag = int(not capture_int_flag)
 
-        
-        
-        previous_mode_button = mode_button
-        previous_photo_button  = photo_button
-        #print(x, y, xVelocity, yVelocity)
-        
-        timeOfLoop = currentT - initial_time
-        initial_time = currentT
-        
 
-    print("Exiting control loop")
-    quit_lock.acquire()
-    quit_flag = True
-    quit_lock.release()
-
+        i += 2
+        if i >= 10000:
+            buffer = False
+        print([GAME_TYPE,capture_int_flag])
+        # print([GAME_TYPE,capture_int_flag,[x_plus_cond,x_minus_cond,y_plus_cond,y_mins_cond],"x",x,"y",y,x_plus_lim.get_state()])
 if __name__ == '__main__':
     argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument("GAME_TYPE", type=int,help="Seconds the game will run for")
+    argument_parser.add_argument("GAME_TYPE", type=int,help="What control mode")
     args = argument_parser.parse_args()
     
     GAME_TYPE = args.GAME_TYPE
+    if GAME_TYPE == 1:
+        Game_mode = "ground"
+    else:
+        Game_mode = "space"
     pygame.init()
     pygame.joystick.init()
     main_loop((pygame.joystick.Joystick(0) if pygame.joystick.get_count() > 0 else None))
     pygame.quit()
+    
+    
+    
+    
+    

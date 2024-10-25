@@ -1,6 +1,7 @@
 import cv2
 from PIL import Image
 import pygame, pygame.image
+from pygame.locals import *
 import pygame.camera
 import time
 from gpiozero import Button
@@ -18,82 +19,139 @@ import os
 import signal
 import json
 import RPi.GPIO as GPIO
+import threading
+import ast
 
-cubesat_size = (155, 155)
-cubesat_logo = pygame.image.load("figs/logo.png")
-cubesat_logo = pygame.transform.scale(cubesat_logo, cubesat_size)
-cubesat_location = (-10, 844)
-
-DISPLAY_WIDTH = 1000
-DISPLAY_HEIGHT = 1000
-IMAGE_SIZE = (1000,1000)
-IMAGE_DISPLAY_LOCATION = (-(IMAGE_SIZE[1]-DISPLAY_WIDTH)/2, -(IMAGE_SIZE[0]-DISPLAY_HEIGHT)/2)
-
-static_screen = pygame.image.load("figs/static.gif")
-static_screen = pygame.transform.scale(static_screen, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-static_screen_location = (0, 0)
-
-MODE_TYPE = ("Ground", "Space")
-
-FONT_COLOR_GREEN = (0, 150, 0)
-FONT_COLOR_WHITE = (255, 255, 255)
-FONT_COLOR_RED = (150, 0, 0)
-
-GREEN = (0, 255, 0)
+global BLACK, WHITE, RED, CROSSHAIR
 BLACK = (0, 0, 0)
-GREY = (40, 40, 40)
-LIGHT_GREY = (120, 120, 120)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+CROSSHAIR = (52, 140, 25)
+GREY = (128,128,128)
 
-CROSSHAIR_COLOR = (40, 40, 40)
-BACKGROUND_COLOR = (250, 0, 0)
-crosshair_width = 1
-crosshair_length = 150
-
-COUNTDOWN_DISPLAY_LOCATION = (703, 937)
-COUNTDOWN_BAR_WIDTH = 5
-COUNTDOWN_AREA_WIDTH = 302
-NUM_OF_BARS = 100 #use 50 to keep green bars seperated 
-
-LIMIT_SWITCH_PINS = [6,5,19,13]
-
-global image_buffer, image_buffer_lock, quit_lock, image_available, quit_flag
+# Define global variables
+quit_lock = threading.Lock()
+quit_flag = False
 image_buffer = None
 image_buffer_lock = threading.Lock()
-quit_lock = threading.Lock()
-image_available = False
-quit_flag = False
-
-#whether to restart game
-restart = True
 
 def enqueue_output(out, queue):
     for line in iter(out.readline,b''):
         queue.put(line)
     out.close()
 
-def draw_rect(colour, x, y, length, height, rad):
-        pygame.draw.rect(main_display, colour, (x, y, length, height), border_radius=rad)
 
-def draw_tri(colour, x1, y1, x2, y2, x3, y3):
-        pygame.draw.polygon(main_display, colour, [(x1, y1), (x2, y2), (x3, y3)])
-
-def draw_line(color, x1, y1, x2, y2, width_):
-    pygame.draw.line(main_display, color, (x1, y1), (x2, y2), width=width_)
+def draw_rect(colour, x, y, width, height, rad):
+    
+    width_show = width*screen_width
+    height_show = screen_width*height
+    aspect = screen_width/screen_height
+    rect = Rect(0, 0, width_show, height_show, border_radius = rad)
+    
+    rect.centerx = (x+(-x+0.5)*width)*screen_width
+    rect.centery = (1-(y+(-y+0.5)*(width*aspect)))*screen_height
+    pygame.draw.rect(main_display, colour, rect)
+    
+    
+def draw_poly(colour, points):
+    for i in points:
+        i[0] *= screen_width
+        i[1] = (1-i[1])*screen_height
         
-def visual_countdown(total_time, time_remaining):
-    if time_remaining == 0:
-        return 0
-    else:
-        BAR_GAP = (COUNTDOWN_AREA_WIDTH - NUM_OF_BARS * COUNTDOWN_BAR_WIDTH)/(NUM_OF_BARS - 1)
-        time_elapsed = (total_time - time_remaining)
-        time_per_bar = total_time/NUM_OF_BARS
-        NUM_BARS_TO_DRAW = int(NUM_OF_BARS - (time_elapsed//time_per_bar))
-        for i in range(NUM_BARS_TO_DRAW):
-            #x and y coord start at the right most spot for the bar and work left
-            draw_rect(GREEN, DISPLAY_WIDTH - COUNTDOWN_BAR_WIDTH * (i + 1) - BAR_GAP * i, 929, COUNTDOWN_BAR_WIDTH, 71, 0)
+
+    
+    x = pygame.draw.polygon(main_display, colour, points)
+    return x
+
+def draw_line(color, p1, p2, width_):
+    pygame.draw.line(main_display, color, (p1[0]*screen_width, (1-p1[1])*screen_height), (p2[0]*screen_width, (1-p2[1])*screen_height), width=width_)
+
+def draw_circle(center, radius, colour, sides=64):
+    points = [
+        [center[0] + radius * np.cos(np.deg2rad(angle)),
+         center[1] + radius * np.sin(np.deg2rad(angle))]
+        for angle in range(0, 360, 360 // sides)
+    ]
+    draw_poly(colour, points)
+
+def make_UI(screen,photo_points,mode,font,time_left,score):
+    #Crosshair 
+    
+    # draw_rect(CROSSHAIR, 0.75, 0.59, 0.01, 0.075, 1)
+    # draw_rect(CROSSHAIR, 0.75, 0.59, 0.075, 0.01, 1)
+    pygame.draw.circle(screen, CROSSHAIR, (0.76*screen_width,(1-0.55)*screen_height), 0.2*screen_width*0.1)
+    
+    
+    
+    #staging stuff
+    stage_width = 0.1
+    stage_height = 0.05
+    stage_x = 0  # Moved to the left
+    stage_spacing = 0.09  # Reduced spacing
+    top_box_stage = (1-(0.1+photo_points * stage_spacing+0.05))*screen_height
+    right_box_stage = 0.175
+    top_box_stage = 0.05+(photo_points * stage_spacing)
+    
+    draw_poly(BLACK, [[0,0],[0,top_box_stage],[right_box_stage,top_box_stage],[right_box_stage,0]])
+    for i in range(photo_points):
+        stage_y = 0.1+i * stage_spacing
+        stage_points = [
+            [stage_x, stage_y],
+            [stage_x + stage_width, stage_y],
+            [stage_x + stage_width, stage_y - stage_height],
+            [stage_x, stage_y - stage_height]
+        ]
+        box = draw_poly(WHITE, stage_points)
+        square_center = [(stage_x+stage_width/2)*screen_width,(1-(stage_y-stage_height/2))*screen_height]
+        stage_text = font.render(str(i+1), True, RED)
+        stage_text_rect = stage_text.get_rect(center=(square_center[0],square_center[1]))
+        screen.blit(stage_text, stage_text_rect)
+    
+    photo_text = font.render("Photos left", True, WHITE)
+    photo_text_rect = stage_text.get_rect(center=(0.01*screen_width,(1-(0.1+i * stage_spacing+0.015))*screen_height))
+    screen.blit(photo_text, photo_text_rect)
+    
+
+    
+    
+    
+    
+    
+    
+    # Drawing the Altimeter Needle
+    draw_poly(WHITE, [[0.35,1],[0.35,0.9],[0.65,0.9],[0.65,1]])
+    altimeter_center = [0.4, 0.95]
+    altimeter_radius = 0.05
+    draw_circle(altimeter_center, altimeter_radius, GREY)
+    needle_length = altimeter_radius * 0.9
+    needle_angle = ((time_left/COUNTDOWN_TIME)*360)+90
+    needle_points = [
+        altimeter_center,
+        [altimeter_center[0] + needle_length *np.cos(np.deg2rad(needle_angle)),
+         altimeter_center[1] + needle_length * np.sin(np.deg2rad(needle_angle))]
+    ]
+    draw_line(RED, needle_points[0],needle_points[1],10)
+    font = pygame.font.Font(None, int(screen_width/15))
+    time_text = font.render(str(round(time_left,0)),True,BLACK)
+    
+    time_text_rect = stage_text.get_rect(center=(0.55*screen_width,(1-0.96)*screen_height))
+    screen.blit(time_text,time_text_rect)
+    
+    
+    #mode and score 
+    
+    draw_poly(BLACK, [[0.5,0],[0.5,0.05],[1,0.05],[1,0]])
+    font = pygame.font.Font(None, int(screen_width/25))
+
+    mode_text = font.render(f"Mode: {mode}",True,WHITE)
+    mode_text_box = stage_text.get_rect(center=(0.52*screen_width,(0.97*screen_height)))
+    screen.blit(mode_text,mode_text_box)
+    
+    
     
 
 class ImageReader(threading.Thread):
+
     def __init__(self, cam):
         super().__init__()
         self.cam = cam
@@ -121,335 +179,200 @@ class ImageReader(threading.Thread):
                 crop_x_end = int(original_image[0]-(original_image[0]-pixel_crop)/2)
                 crop_y_start = int((original_image[1]-pixel_crop)/2)
                 crop_y_end = int(original_image[1]-(original_image[1]-pixel_crop)/2)
-                 
+                IMAGE_SIZE = (1000,1000)
                 img = img[crop_x_start:crop_x_end,crop_y_start:crop_y_end]
                 buff = cv2.rotate(cv2.convertScaleAbs(cv2.resize(img, IMAGE_SIZE), 4, -2), cv2.ROTATE_90_COUNTERCLOCKWISE)
                 image_buffer_lock.acquire()
                 image_buffer = copy.copy(buff)
                 image_buffer_lock.release()
-        print("Exiting image loop")
+                
+                
+                
+def countdown(seconds,screen,font,WIDTH, HEIGHT):
 
-def grab_vis_image():
-    vis_image = pygame.transform.rotate(vis_cam.get_image(),90)
-    alpha_val = 128 #50% transparency
-    vis_image.set_alpha(alpha_val)
-    original_size = (1920,1080)
-    crop_vis_image = vis_image.subsurface(pygame.Rect(520,430,400,400))
-    crop_vis_image = pygame.transform.scale(crop_vis_image,(1000,1000))
-    main_display.blit(crop_vis_image, (0,0))
+    start_time = pygame.time.get_ticks()
+    end_time = start_time + seconds * 1000
+    running = True
 
-def make_text(font_size, input_text, color, x, y):
-        text = pygame.font.Font("freesansbold.ttf", font_size)
-        message = text.render(input_text, True, color)
-        main_display.blit(message, (x, y))
+    while running:
+        screen.fill(BLACK)
+        current_time = (end_time - pygame.time.get_ticks()) // 1000
 
-def make_UI(mode_number):
-    #main_display.fill(BACKGROUND_COLOR)
-    #crosshairs
-    draw_line(CROSSHAIR_COLOR, DISPLAY_WIDTH/2, (DISPLAY_HEIGHT/2 - crosshair_length/2), DISPLAY_WIDTH/2, DISPLAY_HEIGHT/2 + (crosshair_length/2), crosshair_width)
-    draw_line(CROSSHAIR_COLOR, (DISPLAY_WIDTH/2 - crosshair_length/2), DISPLAY_HEIGHT/2, (DISPLAY_WIDTH/2 + crosshair_length/2), DISPLAY_HEIGHT/2, crosshair_width)
+        if current_time < 0:
+            current_time = 0
+            running = False
 
-    #brs = bottom right square, tlt = top left triangle etc
-    #brt
-    draw_tri(GREY, 694, 925, 694, 1000, 644, 1000)
-    #bls
-    draw_rect(GREY, 0, 850, 150, 150, 0)
-    #brr
-    draw_rect(GREY, 694, 925, 306, 75, 0)
-    #blr
-    draw_rect(GREY, 150, 900, 200, 100, 0)
-    #blt
-    draw_tri(GREY, 350, 900, 350, 1000, 450, 1000)
-    #tr
-    draw_rect(GREY, 350, 0, 300, 100, 0)
-    #tlt
-    draw_tri(GREY, 350, 0, 350, 100, 300, 0)
-    #trt
-    draw_tri(GREY, 650, 0, 650, 100, 700, 0)
-    
-    #bls
-    draw_rect(BLACK, 0, 854, 146, 146, 0)
-    #blr
-    draw_rect(BLACK, 150, 904, 196, 96, 0)
-    #blt
-    draw_tri(BLACK, 346, 904, 346, 1000, 445, 1000)
-    #tmr
-    draw_rect(BLACK, 350, 0, 300, 95, 0)
-    #tlt
-    draw_tri(BLACK, 350, 0, 350, 95, 305, 0)
-    #trt
-    draw_tri(BLACK, 650, 0, 650, 95, 695, 0)
-    #brr
-    draw_rect(BLACK, 698, 929, 302, 77, 0)
-    #brt
-    draw_tri(BLACK, 698, 929, 698, 1000, 648, 1000)
-    
-    small_cubesat_logo = pygame.transform.scale(cubesat_logo, (50, 50))
-    main_display.blit(cubesat_logo, cubesat_location)
-    
-    for i in range(photos_left):
-        main_display.blit(small_cubesat_logo, (200 + 50 * i, 950))
-    
-    #main_display.blit(static_screen, static_screen_location)
-    
-    #lines across the rectangles in the bottom left
-    draw_line(GREY, 397, 950, 150, 950, 4)
-    draw_line(GREY, 200, 950, 200, 1000, 4)
-    
-    visual_countdown(COUNTDOWN_TIME, countdown_counter)
-    
-    make_text(50, str(countdown_counter), (FONT_COLOR_WHITE if countdown_counter > 10 else FONT_COLOR_RED), COUNTDOWN_DISPLAY_LOCATION[0], COUNTDOWN_DISPLAY_LOCATION[1])
-    #print(mode_number)
-    make_text(40, "Mode: " + MODE_TYPE[mode_number], FONT_COLOR_WHITE, 350, 30)
-    make_text(45, str(photos_left), FONT_COLOR_WHITE, 160, 955)
-    make_text(25, "Velocity: " + str(velocity), FONT_COLOR_WHITE, 155, 910)
+        text = font.render(str(current_time), True, WHITE)
+        text_rect = text.get_rect(center=(HEIGHT // 2, WIDTH // 2))
+        screen.blit(text, text_rect)
 
-def end_of_game(end_game_type):
-    restart_choosing = True
-    while restart_choosing == True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                restart = False
-                return False
-        if end_game_type == "time_fail":
-            draw_rect(LIGHT_GREY, 250, 450, 500, 100, 20)
-            make_text(40, "Times up!", FONT_COLOR_WHITE, 260, 460)
-            make_text(40, "Thanks for playing :)", FONT_COLOR_WHITE, 260, 505)
-        elif end_game_type == "photos_fail":
-            return 1
-        elif end_game_type == "win":
-            return 1
-        else:
-            restart = False
-            return restart
         pygame.display.flip()
-        
-        time.sleep(5)
-        clean_up_actions()
-        pygame.quit()
-        sys.exit()
 
-def clean_up_actions():
-    # vis_cam.stop()
-    # kill subprocesses
-    os.killpg(os.getpgid(joystick_process.pid),signal.SIGTERM)
-    os.killpg(os.getpgid(peltier_process.pid),signal.SIGTERM)
-    #os.killpg(os.getpgid(thermal_camera_process.pid),signal.SIGTERM)
 
-    # ensure peltiers are turned off
-    # GPIO.setmode(GPIO.BCM)
-    # peltiers = [26,19,13,6]
-    # for peltier in peltiers:
-    #     GPIO.setup(peltier, GPIO.OUT)
-    #     GPIO.output(peltier, 0)
-
-    # ensure stepper pins are low
-    GPIOs = [4, 3, 2, 18, 20, 16, 12, 7]
-
-    for gpio in GPIOs:
-        GPIO.setup(gpio, GPIO.OUT)
-        GPIO.output(gpio, 0)
-
-    quit_flag = True
-
-def main_loop(q):
-    global quit_lock, quit_flag, image_buffer_lock, image_buffer
-    keep_running = True
-    clock = pygame.time.Clock()
-    count = 0
-    image_saved = True
-    last_time = time.time()
-    total_time_passed = 0
+        pygame.time.wait(1000)
+def display_init():
+    global screen_width, screen_height, main_display
+    vis_cam = pygame.camera.Camera("/dev/video0",(200,200))
+    vis_cam.start()
+    screen_info = pygame.display.Info()
+    screen_height = screen_info.current_h
+    screen_width = screen_info.current_w
+    # screen_width -= screen_width/100
+    screen_height -= screen_height*0.1
+    main_display = pygame.display.set_mode((screen_width, screen_height))
+    cubesat_logo = pygame.transform.scale(pygame.image.load("figs/logo.png"), (int(0.1 * screen_width) ,int(0.1 * screen_width)) )  
+    text = pygame.font.Font("freesansbold.ttf", int(screen_width/10))
     
-    global countdown_counter, photos_left, velocity
-    countdown_counter = COUNTDOWN_TIME
-    photos_left = 4
-    velocity = 3.9
-    show_time_up = False
-    line = []
+    
+    
+    
+    
+    
 
-    #defines the objects in the line printed from joystick that represents if a photo_taken request was sent in the previous line
-    previous_line_element_2 = 0
+    
 
-    # magic
+    return text, [screen_height,screen_width],main_display,vis_cam
+
+def grab_vis_image(vis_cam,main_display):
+    vis_image = pygame.transform.rotate(vis_cam.get_image(), 90)
+    alpha_val = 128 #100% transparency
+    vis_image.set_alpha(alpha_val)
+    vis_image = pygame.transform.scale(vis_image, (screen_width, screen_height))
+    
+    main_display.blit(vis_image, (0,0))
+
+def main_loop(q,text,main_display,time_left,photos_left):
+    
+    global quit_lock, quit_flag, image_buffer_lock, image_buffer
+    
     ON_POSIX = 'posix' in sys.builtin_module_names
     
-    while keep_running:
-        # Process events first
+    
+    start_time = pygame.time.get_ticks()
+    end_time = start_time + time_left * 1000
+    font = pygame.font.Font(None, int(screen_width/30))
+    height, width = screen_height, screen_width
+    take_photo = None
+    take_photo_last = take_photo
+    mode = 'init'
+    time_left = 10000
+    countdown(10, main_display, text, screen_width, screen_height)
+    score = 0
+    print("here")
+    while (time_left> 0) and (photos_left> 0):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 keep_running = False
-                end_game_type = "quit"
-                return end_game_type
+                
+        time_left = (end_time - pygame.time.get_ticks()) // 1000
+        output = joystick_process.stdout.readline().decode('utf-8')
+        output = output[1:-2].split(', ')
 
-        # collect thermal image and display
+        
+            
+        IMAGE_SIZE = (1000,1000)
+        IMAGE_DISPLAY_LOCATION = (-(IMAGE_SIZE[1]-screen_width)/2-200, -(IMAGE_SIZE[0]-screen_height)/2)
+        # IMAGE_DISPLAY_LOCATION = (screen_width,screen_height)
         if image_buffer_lock.acquire(timeout=0.001):
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
                 #print('found image in buffer')
                 recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR')
-                main_display.blit(recvsurface, IMAGE_DISPLAY_LOCATION)
+                recvsurface = pygame.transform.scale(recvsurface, ((screen_width,screen_height)))
+                recvsurface = pygame.transform.rotate(recvsurface, 180)
+                main_display.blit(recvsurface, (0,0))
             image_buffer_lock.release()
-
-        # collect visual image and display
-        grab_vis_image()
-
-        # check for UI updates from joystick process
-        
-        '''
-        with open("config.json",'r') as configFile:
-            config = json.load(configFile)
-            configFile.close()
-
-        if config['space_mode_flag']:
-            mode_number = 0
-        else:
-            mode_number = 1
-        if config['image_to_be_captured']:
-            photos_left -= 1
-            with open('config.json','w') as configFile:
-                json.dump(config,configFile)
-                configFile.close()
-        '''
-        try: 
-            line = q.get_nowait()
-            line = list(str(line))
-            print(f' RECIEVED LINE: {line}')
-            line = [int(line[3]),int(line[6]),int(line[9])]
-        
-        except Exception as e:
-            print('errors in communicating with joy stick programme')
-            print(e)
-            line= [0,0,0]
         
         
-        mode_number = line[0]
-        if line[1] == 1:
-            if previous_line_element_2 == 0:
-                photos_left = photos_left - 1
-                previous_line_element_2 = 1
-        else:
-            if previous_line_element_2 == 1:
-                photos_left = photos_left - 1
-                previous_line_element_2 = 0
-        if photos_left == 0:
-            end_game_type = "photos_fail"
-            return end_game_type
-
-        make_UI(mode_number)
-        
-        total_time_passed += time.time() - last_time
-        last_time = time.time()
-        if total_time_passed >= 1:
-            countdown_counter -= 1
-            total_time_passed = 0
-            if countdown_counter <= 0:
-                # kill joystick control when out of time
-                #os.killpg(os.getpgid(joystick_process.pid), signal.SIGTERM)
-                countdown_counter = 0
-                end_game_type = "time_fail"
-                make_UI(mode_number)
-                return end_game_type
-                #show_time_up = not show_time_up
-                
-        #if show_time_up == True:
-            #draw_rect(LIGHT_GREY, 250, 450, 500, 100, 20)
-            #make_text(40, "Times up!", FONT_COLOR_WHITE, 260, 460)
-            #make_text(40, "Thanks for playing :)", FONT_COLOR_WHITE, 260, 505)
-        
-        
-        if countdown_counter <= 10:
-            #low time warning
-            make_text(25, "LOW POWER", FONT_COLOR_RED, 760, 940)
-        # Update display
+        grab_vis_image(vis_cam, main_display)
+        make_UI(main_display,photos_left,mode,font,time_left,score)
         pygame.display.flip()
-        # print(x, "\t", y)
+        avg_heat = image_buffer.mean()
         
         
-
-    print("Exiting control loop")
+        
+        try:
+            if output[0] == '1':
+                None
+        except:
+            output = None
+        if (output != None) and (len(output) == 2):
+            if ((output[1] == '0') or (output[1] == '1')):
+                take_photo = output[1]
+                if (take_photo != take_photo_last) and (take_photo_last != None):
+                    
+                    photos_left -= 1
+                    if avg_heat < 50:
+                        score += 1
+                take_photo_last =take_photo
+            if (output[0] == '0'):
+                mode = 'space'
+            elif (output[0] == '1'):
+                mode = 'ground'
+            else:
+                None
+            print("Here1")
+        
     quit_lock.acquire()
     quit_flag = True
     quit_lock.release()
-
-
-try:
-    # begin main loop at kill joystick porcess on keyboard interupt
-    if __name__ == '__main__':
-        # starting camera service
-        '''
-        thermal_camera_process = subprocess.Popen('sudo modprobe v4l2loopback;sudo thermapp' ,
-                                            shell = True,
-                                            stdin = None,
-                                            stdout = None,
-                                            stderr = subprocess.STDOUT,
-                                            bufsize= 1,
-                                            preexec_fn =os.setsid)
-        '''
-
-        peltier_process = subprocess.Popen('python3 peltier_control.py' ,
-                                            shell = True,
-                                            stdin = None,
-                                            stdout = None,
-                                            stderr = subprocess.STDOUT,
-                                            bufsize= 1,
-                                            preexec_fn =os.setsid)
-
-        argument_parser = argparse.ArgumentParser()
-        argument_parser.add_argument("countdown_max", type=int,help="Seconds the game will run for")
-        argument_parser.add_argument("game_type", type = int, help = "1 for normal, 0 for space")
-        args = argument_parser.parse_args()
-        COUNTDOWN_TIME = args.countdown_max
-        GAME_TYPE = args.game_type
-        print("Counting down from: " + str(COUNTDOWN_TIME))
-
-
-        cam = cv2.VideoCapture('/dev/video2')
-        pygame.init()
-        pygame.joystick.init()
-        #print("visual camera count: " + str(pygame.camera.get_count()))
-        print("Joystick count: " + str(pygame.joystick.get_count()))
-        main_display = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
-        # main_display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-
-        # setup thermal camera image reader
-        image_reader = ImageReader(cam)
-        image_reader.start()
-
-        # start visual camera streaming
-        vis_cam = pygame.camera.Camera("/dev/video0",(1920,1080))
-        vis_cam.start()
-
-        #start process for joy stick
-        joystick_process = subprocess.Popen(f"python3 joystick.py {GAME_TYPE}",
-                                            shell = True,
-                                            stdin = None,
-                                            stdout = subprocess.PIPE,
-                                            stderr = subprocess.STDOUT,
-                                            bufsize= 1,
-                                            preexec_fn =os.setsid)
-        q = queue.LifoQueue()
-        t = threading.Thread(target=enqueue_output,args=(joystick_process.stdout,q))
-        t.daemon = True
-        t.start()
-        print("here")
-        while True:
-            try: 
-                line = q.get_nowait()
-                line = list(str(line))
-                print(f' RECIEVED LINE: {line}')
-            except:
-                print("Failed")
-    while restart == True:
     
-            end_game_type = main_loop(q)
-            restart = end_of_game(end_game_type)
+    return score
 
-except KeyboardInterrupt:
-    print('interrupted with keyboard')
-    # clean up even when cancelled
-    clean_up_actions()
+def quit_game():
+    pygame.quit()
+
+if __name__ == '__main__':
+    global COUNTDOWN_TIME
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument("countdown_max", type=int,help="Seconds the game will run for")
+    argument_parser.add_argument("game_type", type = int, help = "1 for normal, 0 for space")
+    argument_parser.add_argument("photos", type = int, help = "how many photos does the player get?")
+    args = argument_parser.parse_args()
+    COUNTDOWN_TIME = args.countdown_max
+    GAME_TYPE = args.game_type
+    PHOTOS_LEFT = args.photos
+    
+    cam = cv2.VideoCapture('/dev/video2')
+    pygame.init()
+    pygame.camera.init() 
+    # pygame.joystick.init()
+    
+    text, [screen_height,screen_width],main_display,vis_cam = display_init()
+    
+    image_reader = ImageReader(cam)
+    image_reader.start()
+    
+
+    joystick_process = subprocess.Popen(f"python3 joystick.py {GAME_TYPE}", 
+                               shell = True,
+                               stdin = None,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               bufsize= 1,
+                               preexec_fn =os.setsid)
+    q = queue.LifoQueue()
+    t = threading.Thread(target=enqueue_output,args=(joystick_process.stdout,q))
+    
+    t.daemon = True
+    t.start()
+    score = main_loop(q,text,main_display,COUNTDOWN_TIME,PHOTOS_LEFT)
+    
+    
+    print(score)
+    
+    time.sleep(2)
         
-# clean up at end of game   
-image_reader.join()
-clean_up_actions()
+
+    
+
+        
+        
+    
+    
+    
+    
+ 
+            
+
+
