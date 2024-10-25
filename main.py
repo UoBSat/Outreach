@@ -212,7 +212,7 @@ def countdown(seconds,screen,font,WIDTH, HEIGHT):
         pygame.time.wait(1000)
 def display_init():
     global screen_width, screen_height, main_display
-    vis_cam = pygame.camera.Camera("/dev/video0",(200,200))
+    vis_cam = pygame.camera.Camera("/dev/video1",(200,200))
     vis_cam.start()
     screen_info = pygame.display.Info()
     screen_height = screen_info.current_h
