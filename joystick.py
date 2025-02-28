@@ -69,16 +69,17 @@ def main_loop(joystick):
     i =0 
     capture_int_flag = 0
     imageToBeCaptured = 0
-        
+    joystick.init()
     while keep_running:
         for event in pygame.event.get():
+            print(event.type)
             if event.type == pygame.QUIT:
                 keep_running = False
-            elif event.type == pygame.JOYDEVICEADDED:
-                joystick.init()
-            elif event.type == pygame.JOYDEVICEREMOVED:
-                print("joystick removed")
-                raise Exception("Joystick not connected")
+                
+
+            #elif event.type == 7:
+                #print("joystick removed")
+                #raise Exception("Joystick not connected")
                 
                 
         x = joystick.get_axis(0)
@@ -234,7 +235,7 @@ if __name__ == '__main__':
     else:
         Game_mode = "space"
     pygame.init()
-    pygame.joystick.init()
+
     main_loop((pygame.joystick.Joystick(0) if pygame.joystick.get_count() > 0 else None))
     pygame.quit()
     
