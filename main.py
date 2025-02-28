@@ -64,7 +64,7 @@ def draw_poly(colour, points):
     return x
 
 def draw_line(color, p1, p2, width_):
-    pygame.draw.line(main_display, color, (p1[0]*screen_width, (1-p1[1])*screen_height), (p2[0]*screen_width, (1-p2[1])*screen_height), width=width_)
+    pygame.draw.line(main_display, color, (p1[0]*screen_width, (1-p1[1])*screen_height), (p2[0]*screen_width, (1-p2[1])*screen_height), width_)
 
 def draw_circle(center, radius, colour, sides=64):
     points = [
@@ -79,7 +79,7 @@ def make_UI(screen,photo_points,mode,font,time_left,score):
     
     # draw_rect(CROSSHAIR, 0.75, 0.59, 0.01, 0.075, 1)
     # draw_rect(CROSSHAIR, 0.75, 0.59, 0.075, 0.01, 1)
-    pygame.draw.circle(screen, CROSSHAIR, (0.76*screen_width,(1-0.55)*screen_height), 0.2*screen_width*0.1)
+    pygame.draw.circle(screen, CROSSHAIR, (int(0.76*screen_width),int((1-0.55)*screen_height)), int(0.2*screen_width*0.1))
     
     
     
@@ -102,13 +102,13 @@ def make_UI(screen,photo_points,mode,font,time_left,score):
             [stage_x, stage_y - stage_height]
         ]
         box = draw_poly(WHITE, stage_points)
-        square_center = [(stage_x+stage_width/2)*screen_width,(1-(stage_y-stage_height/2))*screen_height]
+        square_center = [(stage_x+stage_width/2)*int(screen_width),(1-(stage_y-stage_height/2))*int(screen_height)]
         stage_text = font.render(str(i+1), True, RED)
         stage_text_rect = stage_text.get_rect(center=(square_center[0],square_center[1]))
         screen.blit(stage_text, stage_text_rect)
     
     photo_text = font.render("Photos left", True, WHITE)
-    photo_text_rect = stage_text.get_rect(center=(0.01*screen_width,(1-(0.1+i * stage_spacing+0.015))*screen_height))
+    photo_text_rect = stage_text.get_rect(center=(0.01*int(screen_width),(1-(0.1+i * stage_spacing+0.015))*int(screen_height)))
     screen.blit(photo_text, photo_text_rect)
     
 
@@ -134,7 +134,7 @@ def make_UI(screen,photo_points,mode,font,time_left,score):
     font = pygame.font.Font(None, int(screen_width/15))
     time_text = font.render(str(round(time_left,0)),True,BLACK)
     
-    time_text_rect = stage_text.get_rect(center=(0.55*screen_width,(1-0.96)*screen_height))
+    time_text_rect = stage_text.get_rect(center=(0.55*int(screen_width),(1-0.96)*screen_height))
     screen.blit(time_text,time_text_rect)
     
     
@@ -144,7 +144,7 @@ def make_UI(screen,photo_points,mode,font,time_left,score):
     font = pygame.font.Font(None, int(screen_width/25))
 
     mode_text = font.render(f"Mode: {mode}",True,WHITE)
-    mode_text_box = stage_text.get_rect(center=(0.52*screen_width,(0.97*screen_height)))
+    mode_text_box = stage_text.get_rect(center=(0.52*int(screen_width),(0.97*screen_height)))
     screen.blit(mode_text,mode_text_box)
     
     
@@ -154,7 +154,6 @@ class ImageReader(threading.Thread):
 
     def __init__(self, cam):
         super().__init__()
-        print("Grabbing thermal image")
         self.cam = cam
 
     def run(self) -> None:
@@ -167,12 +166,13 @@ class ImageReader(threading.Thread):
                 cam.release()
                 stop = True
             quit_lock.release()
-            
+
             # Read image
             ret, cv_image = self.cam.read()
             if cv_image is not None:
                 #img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
                 img = cv_image
+                print(f'here: {img}')
                 # crop the  image
                 pixel_crop = 400
                 original_image = (640,480)
@@ -213,7 +213,6 @@ def countdown(seconds,screen,font,WIDTH, HEIGHT):
         pygame.time.wait(1000)
 def display_init():
     global screen_width, screen_height, main_display
-    print("Grabbing visual image")
     vis_cam = pygame.camera.Camera("/dev/video0",(200,200))
     vis_cam.start()
     screen_info = pygame.display.Info()
@@ -236,11 +235,10 @@ def display_init():
     return text, [screen_height,screen_width],main_display,vis_cam
 
 def grab_vis_image(vis_cam,main_display):
-    
     vis_image = pygame.transform.rotate(vis_cam.get_image(), 90)
     alpha_val = 128 #100% transparency
     vis_image.set_alpha(alpha_val)
-    vis_image = pygame.transform.scale(vis_image, (screen_width, screen_height))
+    vis_image = pygame.transform.scale(vis_image, (int(screen_width), int(screen_height)))
     
     main_display.blit(vis_image, (0,0))
 
@@ -254,13 +252,14 @@ def main_loop(q,text,main_display,time_left,photos_left):
     start_time = pygame.time.get_ticks()
     end_time = start_time + time_left * 1000
     font = pygame.font.Font(None, int(screen_width/30))
-    height, width = screen_height, screen_width
+    height, width = int(screen_height), int(screen_width)
     take_photo = None
     take_photo_last = take_photo
     mode = 'init'
     time_left = 10000
-    countdown(10, main_display, text, screen_width, screen_height)
+    countdown(10, main_display, text, int(screen_width), int(screen_height))
     score = 0
+    print("here")
     while (time_left> 0) and (photos_left> 0):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -273,22 +272,20 @@ def main_loop(q,text,main_display,time_left,photos_left):
         
             
         IMAGE_SIZE = (1000,1000)
-        IMAGE_DISPLAY_LOCATION = (-(IMAGE_SIZE[1]-screen_width)/2-200, -(IMAGE_SIZE[0]-screen_height)/2)
+        IMAGE_DISPLAY_LOCATION = (-(IMAGE_SIZE[1]-int(screen_width))/2-200, -(IMAGE_SIZE[0]-int(screen_height))/2)
         # IMAGE_DISPLAY_LOCATION = (screen_width,screen_height)
         if image_buffer_lock.acquire(timeout=0.001):
-            
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
                 #print('found image in buffer')
                 recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR')
-                recvsurface = pygame.transform.scale(recvsurface, ((screen_width,screen_height)))
+                recvsurface = pygame.transform.scale(recvsurface, ((int(screen_width),int(screen_height))))
                 recvsurface = pygame.transform.rotate(recvsurface, 180)
                 main_display.blit(recvsurface, (0,0))
             image_buffer_lock.release()
         
-        
+        print(vis_cam)
         grab_vis_image(vis_cam, main_display)
-        print("Displaying visual image")
         make_UI(main_display,photos_left,mode,font,time_left,score)
         pygame.display.flip()
         avg_heat = image_buffer.mean()
@@ -315,6 +312,7 @@ def main_loop(q,text,main_display,time_left,photos_left):
                 mode = 'ground'
             else:
                 None
+            print("Here1")
         
     quit_lock.acquire()
     quit_flag = True
