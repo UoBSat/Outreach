@@ -169,6 +169,7 @@ class ImageReader(threading.Thread):
 
             # Read image
             ret, cv_image = self.cam.read()
+            #print(f'cv_image: {cv_image}')
             if cv_image is not None:
                 #img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
                 img = cv_image
@@ -278,7 +279,7 @@ def main_loop(q,text,main_display,time_left,photos_left):
             if image_buffer is not None:
                 # Convert opencv image to pygame compatible image
                 #print('found image in buffer')
-                recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'BGR')
+                recvsurface = pygame.image.frombuffer(image_buffer, IMAGE_SIZE[::-1], 'RGB')
                 recvsurface = pygame.transform.scale(recvsurface, ((int(screen_width),int(screen_height))))
                 recvsurface = pygame.transform.rotate(recvsurface, 180)
                 main_display.blit(recvsurface, (0,0))
@@ -333,8 +334,10 @@ if __name__ == '__main__':
     COUNTDOWN_TIME = args.countdown_max
     GAME_TYPE = args.game_type
     PHOTOS_LEFT = args.photos
+    print('connecting to thermal camera')
     
-    cam = cv2.VideoCapture('/dev/video2')
+    cam = cv2.VideoCapture('/dev/video2',cv2.CAP_V4L)
+    print('attempted to connect to thermal camera')
     pygame.init()
     pygame.camera.init() 
     # pygame.joystick.init()
