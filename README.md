@@ -43,8 +43,8 @@ sudo make install
 ```
 or alternatively
 ```
-gcc -Wall -c -o thermapp.o thermapp.c -I/usr/include/libusb-1.0 -lpthread
-gcc thermapp.o main.c -o thermapp -lusb-1.0 -lpthread
+gcc -Wall -c -o thermapp.o thermapp.c -lpthread -I/usr/include/libusb-1.0 
+gcc thermapp.o main.c -o thermapp -lpthread -lusb-1.0 
 ```
 Now when you do make, it should say thermapp is already setup or similar.
 Next:
