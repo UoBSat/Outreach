@@ -26,6 +26,16 @@ to
 Here, the makefile is setup for older versions of cmake which like the libraries linked before the file name, but newer versions are unable to find libusb and similar libraries this way. Following the install instructions in the thermapp repo, do:
 ```
 cd thermapp
+sudo nano thermapp.h
+```
+and change the line 
+```
+#include <libusb>
+```
+to 
+```
+#include <libusb-1.0/libusb.h>
+```
 make
 sudo make install
 ```
