@@ -63,7 +63,7 @@ sudo pip install pygame gpiozero threaded pillow numpy queue ast RPi
 ```
 then install opencv for python
 ```
-sudo apt-get install python-opencv
+sudo apt-get install python3-opencv
 ```
 now clone this repository
 ```
