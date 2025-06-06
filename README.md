@@ -36,6 +36,8 @@ to
 ```
 #include <libusb-1.0/libusb.h>
 ```
+then
+```
 make
 sudo make install
 ```
