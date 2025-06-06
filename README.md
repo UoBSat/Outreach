@@ -65,10 +65,7 @@ then install opencv for python
 ```
 sudo apt-get install python-opencv
 ```
-now clone this repo into your user home folder
-```
-git clone https://github.com/encryptededdy/ThermAppCam.git
-```
+
 
 ## Start up and Use
 ### Cable connection
