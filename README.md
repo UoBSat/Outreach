@@ -65,6 +65,10 @@ then install opencv for python
 ```
 sudo apt-get install python-opencv
 ```
+now clone this repository
+```
+sudo git clone https://github.com/UoBSat/Outreach.git
+```
 
 
 ## Start up and Use
