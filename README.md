@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This installation guide is now deprecated, a new version is currently being developed and will completely replacing this version with additional debug log. -CNSN
+
 # Outreach
 Code base for UoBSat outreach activities, including "Catch the Volcano!"
 Code is divided into 2 major sections:
